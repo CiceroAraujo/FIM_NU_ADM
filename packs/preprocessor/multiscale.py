@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.sparse import csc_matrix, csgraph
+import scipy.sparse as sp
 from .. import inputs
 
 def get_primal_and_dual_meshes(centroids, faces):
@@ -18,14 +19,15 @@ def get_prolongation_operator(DUAL_1, GID_1, faces):
     ds, local_ID= get_dual_structure(DUAL_1, faces['adjacent_volumes'], 2)
     lcd_edges = get_edges_OP(faces, ds, lcd_vertices, DUAL_1, local_ID)
 
-
+@profile
 def get_edges_OP(faces, entities, lcd_vertices, DUAL_1, local_ID):
 
     for i in range(len(entities[0])):
         group=entities[0][i]
         ev=entities[1][i]
-        adjs_ev = faces['adjacent_volumes'][ev]
-        adjs_ev = adjs_ev[DUAL_1[adjs_ev]==2]
+        adjs_evs = faces['adjacent_volumes'][ev]
+        edges_ev=DUAL_1[adjs_evs]==2
+        adjs_ev = adjs_evs[edges_ev]
         ts_ev = faces['permeabilities'][ev]
         adjs = faces['adjacent_volumes'][group]
         ts = faces['permeabilities'][group]
@@ -34,9 +36,14 @@ def get_edges_OP(faces, entities, lcd_vertices, DUAL_1, local_ID):
         data=np.concatenate([ts, ts, -ts, -ts, -ts_ev])
         EE=csc_matrix((data, (lines, cols)), shape=(lines.max()+1,cols.max()+1))
 
-        groupv=entities[1][i]
-
-
+        vertices_IDs=adjs_evs[~edges_ev]
+        linesev=local_ID[adjs_ev]
+        colsev=np.arange(len(linesev))
+        dataev=ts_ev
+        EV=csc_matrix((dataev, (linesev, colsev)), shape=(EE.shape[0],colsev.max()+1))
+        Pev=-sp.linalg.spsolve(EE,EV)
+        import pdb; pdb.set_trace()
+        lcd_faces=sp.find(Pev)
 # @profile
 def get_dual_and_primal_1(centroids):
     maxs=centroids.max(axis=0)
@@ -131,5 +138,5 @@ def get_dual_structure(DUAL_1, adjs, entity):
         sents=ents[asort]
         sfaces=faces[asort]
         pos=np.arange(len(faces)-1)[(-sents[:-1]+sents[1:])==1]
-        entities.append(np.split(faces,pos+1))
+        entities.append(np.split(sfaces,pos+1))
     return entities, local_ID.astype(int)
