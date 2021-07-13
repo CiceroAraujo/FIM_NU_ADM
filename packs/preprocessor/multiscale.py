@@ -7,7 +7,7 @@ def get_primal_and_dual_meshes(centroids, faces):
     GID_1, DUAL_1 = get_dual_and_primal_1(centroids)
     # dual_preps = get_dual_structure(DUAL_1, faces['adjacent_volumes'], 2)
     OP_AMS = get_prolongation_operator(DUAL_1, GID_1, faces)
-    lcd_vertices = get_vertices_OP(DUAL_1, GID_1)
+    # lcd_vertices = get_vertices_OP(DUAL_1, GID_1)
     # lcd_edges = get_edges_OP(DUAL_1, GID_1, lcd_vertices)
     # import pdb; pdb.set_trace()
     return GID_1, DUAL_1
@@ -15,13 +15,45 @@ def get_primal_and_dual_meshes(centroids, faces):
 def get_prolongation_operator(DUAL_1, GID_1, faces):
     adjs = faces['adjacent_volumes']
     ts = faces['permeabilities']
-    lcd_vertices = get_vertices_OP(DUAL_1, GID_1)
-    ds, local_ID= get_dual_structure(DUAL_1, faces['adjacent_volumes'], 2)
-    lcd_edges = get_edges_OP(faces, ds, lcd_vertices, DUAL_1, local_ID)
+    # lcd_vertices = get_vertices_OP(DUAL_1, GID_1)
+    ds_edges, local_ID_edges, entity_ID_edges = get_dual_structure(DUAL_1, faces['adjacent_volumes'], 2)
+    lcd_edges = get_edges_OP(faces, ds_edges, DUAL_1, local_ID_edges)
+    ds_faces, local_ID_faces, entity_ID_faces = get_dual_structure(DUAL_1, faces['adjacent_volumes'], 1)
+    lcd_faces = get_faces_OP(faces, ds_faces, DUAL_1, local_ID_faces, entity_ID_edges, lcd_edges)
+    import pdb; pdb.set_trace()
+
+def get_faces_OP(faces, entities, DUAL_1, local_ID, entity_ID_faces, lcd_edges):
+    ls=[]
+    cs=[]
+    ds=[]
+    for i in range(len(entities[0])):
+        group=entities[0][i]
+        ev=entities[1][i]
+        adjs_evs = faces['adjacent_volumes'][ev]
+        edges_ev=DUAL_1[adjs_evs]==1
+        adjs_ev = adjs_evs[edges_ev]
+        ts_ev = faces['permeabilities'][ev]
+        adjs = faces['adjacent_volumes'][group]
+        ts = faces['permeabilities'][group]
+        lines=local_ID[np.concatenate([adjs[:,0], adjs[:,1], adjs[:,0], adjs[:,1], adjs_ev])]
+        cols=local_ID[np.concatenate([adjs[:,1], adjs[:,0], adjs[:,0], adjs[:,1], adjs_ev])]
+        data=np.concatenate([ts, ts, -ts, -ts, -ts_ev])
+        EE=csc_matrix((data, (lines, cols)), shape=(lines.max()+1,cols.max()+1))
+
+        vertices_IDs=adjs_evs[~edges_ev]
+        linesev=local_ID[adjs_ev]
+        colsev=np.arange(len(linesev))
+        dataev=ts_ev
+        FE=csc_matrix((dataev, (linesev, colsev)), shape=(EE.shape[0],colsev.max()+1))
+        import pdb; pdb.set_trace()
+        Pfv=-sp.linalg.spsolve(EE,EV)
+        import pdb; pdb.set_trace()
 
 @profile
-def get_edges_OP(faces, entities, lcd_vertices, DUAL_1, local_ID):
-
+def get_edges_OP(faces, entities, DUAL_1, local_ID):
+    ls=[]
+    cs=[]
+    ds=[]
     for i in range(len(entities[0])):
         group=entities[0][i]
         ev=entities[1][i]
@@ -45,10 +77,10 @@ def get_edges_OP(faces, entities, lcd_vertices, DUAL_1, local_ID):
 
         lcd_faces=sp.find(Pev)
         uadjs=np.unique(adjs)
-        lines=uadjs[lcd_faces[0]]
-        cols=vertices_IDs[lcd_faces[1]]
-        data=lcd_faces[2]
-        import pdb; pdb.set_trace()
+        ls.append(uadjs[lcd_faces[0]])
+        cs.append(vertices_IDs[lcd_faces[1]])
+        ds.append(lcd_faces[2])
+    return [ls, cs, ds]
 # @profile
 def get_dual_and_primal_1(centroids):
     maxs=centroids.max(axis=0)
@@ -144,4 +176,5 @@ def get_dual_structure(DUAL_1, adjs, entity):
         sfaces=faces[asort]
         pos=np.arange(len(faces)-1)[(-sents[:-1]+sents[1:])==1]
         entities.append(np.split(sfaces,pos+1))
-    return entities, local_ID.astype(int)
+
+    return entities, local_ID.astype(int), entity_ID
