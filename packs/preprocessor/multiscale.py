@@ -42,8 +42,13 @@ def get_edges_OP(faces, entities, lcd_vertices, DUAL_1, local_ID):
         dataev=ts_ev
         EV=csc_matrix((dataev, (linesev, colsev)), shape=(EE.shape[0],colsev.max()+1))
         Pev=-sp.linalg.spsolve(EE,EV)
-        import pdb; pdb.set_trace()
+
         lcd_faces=sp.find(Pev)
+        uadjs=np.unique(adjs)
+        lines=uadjs[lcd_faces[0]]
+        cols=vertices_IDs[lcd_faces[1]]
+        data=lcd_faces[2]
+        import pdb; pdb.set_trace()
 # @profile
 def get_dual_and_primal_1(centroids):
     maxs=centroids.max(axis=0)
