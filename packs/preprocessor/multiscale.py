@@ -15,22 +15,27 @@ def get_prolongation_operator(DUAL_1, GID_1, faces):
     adjs = faces['adjacent_volumes']
     ts = faces['permeabilities']
     lcd_vertices = get_vertices_OP(DUAL_1, GID_1)
-    ds= get_dual_structure(DUAL_1, faces['adjacent_volumes'], 2)
-    lcd_edges = get_edges_OP(faces, ds, lcd_vertices)
+    ds, local_ID= get_dual_structure(DUAL_1, faces['adjacent_volumes'], 2)
+    lcd_edges = get_edges_OP(faces, ds, lcd_vertices, DUAL_1, local_ID)
 
 
-def get_edges_OP(faces, entities, lcd_vertices):
+def get_edges_OP(faces, entities, lcd_vertices, DUAL_1, local_ID):
+
     for i in range(len(entities[0])):
         group=entities[0][i]
         ev=entities[1][i]
         adjs_ev = faces['adjacent_volumes'][ev]
+        adjs_ev = adjs_ev[DUAL_1[adjs_ev]==2]
         ts_ev = faces['permeabilities'][ev]
         adjs = faces['adjacent_volumes'][group]
         ts = faces['permeabilities'][group]
-        lines=np.concatenate([adjs[:,0], adjs[:,1], adjs[:,0], adjs[:,1]])
-        cols=np.concatenate([adjs[:,1], adjs[:,0], adjs[:,0], adjs[:,1]])
-        data=np.concatenate([ts, ts, -ts, -ts])
-        import pdb; pdb.set_trace()
+        lines=local_ID[np.concatenate([adjs[:,0], adjs[:,1], adjs[:,0], adjs[:,1], adjs_ev])]
+        cols=local_ID[np.concatenate([adjs[:,1], adjs[:,0], adjs[:,0], adjs[:,1], adjs_ev])]
+        data=np.concatenate([ts, ts, -ts, -ts, -ts_ev])
+        EE=csc_matrix((data, (lines, cols)), shape=(lines.max()+1,cols.max()+1))
+
+        groupv=entities[1][i]
+
 
 # @profile
 def get_dual_and_primal_1(centroids):
@@ -104,8 +109,20 @@ def get_dual_structure(DUAL_1, adjs, entity):
     data=np.ones(len(lines))
     graph=csc_matrix((data,(lines,cols)),shape=(len(edges),len(edges)))
     n_l,labels=csgraph.connected_components(graph,connection='strong')
+
+    asort=np.argsort(labels)
+    slabels=labels[asort]
+    sedges=edges[asort]
+    pos=np.array([0])
+    pos=np.append(pos,np.arange(len(labels)-1)[(-slabels[:-1]+slabels[1:])==1]+1)
+    pos=np.append(pos,len(labels))
+    vs=np.concatenate([range(pos[i]-pos[i-1]) for i in range(1,len(pos))])
+
     entity_ID=-np.ones(len(DUAL_1))
     entity_ID[edges]=labels
+    local_ID=entity_ID.copy()
+    local_ID[sedges]=vs
+
     entities=[]
     for i in range(entity, 4):
         faces=all_faces[(dual_adjs.min(axis=1)==entity) & (dual_adjs.max(axis=1)==i)]
@@ -115,4 +132,4 @@ def get_dual_structure(DUAL_1, adjs, entity):
         sfaces=faces[asort]
         pos=np.arange(len(faces)-1)[(-sents[:-1]+sents[1:])==1]
         entities.append(np.split(faces,pos+1))
-    return entities
+    return entities, local_ID.astype(int)
