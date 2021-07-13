@@ -1,0 +1,7 @@
+multiscale:
+  coarsening_ratio_1: [3, 3, 1]
+  neta_lim: 1.0
+
+multilevel:
+  alpha_lim: 1.0
+  beta_lim:  3.0
