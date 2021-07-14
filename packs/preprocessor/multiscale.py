@@ -2,6 +2,7 @@ import numpy as np
 from scipy.sparse import csc_matrix, csgraph
 import scipy.sparse as sp
 from .. import inputs
+import time
 
 def get_primal_and_dual_meshes(centroids, faces):
     GID_1, DUAL_1 = get_dual_and_primal_1(centroids)
@@ -13,14 +14,69 @@ def get_primal_and_dual_meshes(centroids, faces):
     return GID_1, DUAL_1
 
 def get_prolongation_operator(DUAL_1, GID_1, faces):
-    adjs = faces['adjacent_volumes']
+    adjacencies = faces['adjacent_volumes']
     ts = faces['permeabilities']
     # lcd_vertices = get_vertices_OP(DUAL_1, GID_1)
-    ds_edges, local_ID_edges, entity_ID_edges = get_dual_structure(DUAL_1, faces['adjacent_volumes'], 2)
-    lcd_edges = get_edges_OP(faces, ds_edges, DUAL_1, local_ID_edges)
-    ds_faces, local_ID_faces, entity_ID_faces = get_dual_structure(DUAL_1, faces['adjacent_volumes'], 1)
-    lcd_faces = get_faces_OP(faces, ds_faces, DUAL_1, local_ID_faces, entity_ID_edges, lcd_edges)
-    import pdb; pdb.set_trace()
+    t0=time.time()
+    ds_edges, local_ID, entity_ID_edges = get_dual_structure(DUAL_1, adjacencies, 2)
+    edge_local_problems = get_prolongation_operator_local_problems(adjacencies, ds_edges, DUAL_1, local_ID)
+
+    ds_faces, local_ID, entity_ID_faces = get_dual_structure(DUAL_1, adjacencies, 1)
+    face_local_problems = get_prolongation_operator_local_problems(adjacencies, ds_faces, DUAL_1, local_ID)
+    #
+    ds_internal, local_ID, entity_ID_internal = get_dual_structure(DUAL_1, adjacencies, 0)
+    face_local_problems = get_prolongation_operator_local_problems(adjacencies, ds_internal, DUAL_1, local_ID)
+    print(time.time()-t0, 'structure')
+
+    # ds_edges, local_ID_edges, entity_ID_edges = get_dual_structure(DUAL_1, faces['adjacent_volumes'], 2)
+    # lcd_edges = get_edges_OP(faces, ds_edges, DUAL_1, local_ID_edges)
+    # ds_faces, local_ID_faces, entity_ID_faces = get_dual_structure(DUAL_1, faces['adjacent_volumes'], 1)
+    # lcd_faces = get_faces_OP(faces, ds_faces, DUAL_1, local_ID_faces, entity_ID_edges, lcd_edges)
+    # import pdb; pdb.set_trace()
+@profile
+def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, local_ID):
+    local_problems=[]
+    for i in range(len(entities[0])):
+        print(i,'/',len(entities[0]),'\r')
+        local_faces = entities[0][i] # Local faces internal internal
+        adjs = adjacencies[local_faces]
+        lines=[adjs[:,0], adjs[:,1], adjs[:,0], adjs[:,1]]
+        cols=[adjs[:,1], adjs[:,0], adjs[:,0], adjs[:,1]]
+        internal_off_diag_entries = np.concatenate([local_faces, local_faces])
+        internal_diag_entries = [local_faces, local_faces]
+        external_matrices=[]
+        for j in range(1,len(entities)):
+            if len(entities[j][0])>0:
+                external_faces = entities[j][i]
+                adjs_int_ext = adjacencies[external_faces]
+                try:
+                    int_pos = DUAL_1[adjs_int_ext]==DUAL_1[adjs_int_ext].min()
+                except:
+                    import pdb; pdb.set_trace()
+                internal_gids=adjs_int_ext[int_pos]
+                #_____External influences____
+                external_gids = adjs_int_ext[~int_pos]
+                l=local_ID[internal_gids]
+                c=np.arange(len(l))
+                d=external_faces+1
+                external_matrix=csc_matrix((d, (l, c)), shape = (adjs.max(), c.max()+1), dtype=np.float32)
+                external_matrices.append([external_matrix, external_faces, external_gids])
+                #_____Internal influences____
+                lines.append(internal_gids)
+                cols.append(internal_gids)
+                internal_diag_entries.append(external_faces)
+                #________________________
+        lines=local_ID[np.concatenate(lines)]
+        cols=local_ID[np.concatenate(cols)]
+        internal_diag_entries=np.concatenate(internal_diag_entries)
+        if len(lines)>0:
+            internal_matrix=csc_matrix((np.ones_like(lines), (lines, cols)), shape = (lines.max()+1, cols.max()+1), dtype=np.float32)
+            internal_gids = np.unique(adjs)
+            i_matrix_structure = [internal_matrix, internal_off_diag_entries, internal_diag_entries, internal_gids]
+        else:
+            i_matrix_structure=[]
+        local_problems.append([i_matrix_structure, external_matrices])
+    return local_problems
 
 def get_faces_OP(faces, entities, DUAL_1, local_ID, entity_ID_faces, lcd_edges):
     ls=[]
@@ -39,7 +95,7 @@ def get_faces_OP(faces, entities, DUAL_1, local_ID, entity_ID_faces, lcd_edges):
         cols=local_ID[np.concatenate([adjs[:,1], adjs[:,0], adjs[:,0], adjs[:,1], adjs_ev])]
         data=np.concatenate([ts, ts, -ts, -ts, -ts_ev])
         EE=csc_matrix((data, (lines, cols)), shape=(lines.max()+1,cols.max()+1))
-
+        import pdb; pdb.set_trace()
         vertices_IDs=adjs_evs[~edges_ev]
         linesev=local_ID[adjs_ev]
         colsev=np.arange(len(linesev))
@@ -49,7 +105,7 @@ def get_faces_OP(faces, entities, DUAL_1, local_ID, entity_ID_faces, lcd_edges):
         Pfv=-sp.linalg.spsolve(EE,EV)
         import pdb; pdb.set_trace()
 
-@profile
+# @profile
 def get_edges_OP(faces, entities, DUAL_1, local_ID):
     ls=[]
     cs=[]
@@ -153,7 +209,7 @@ def get_dual_structure(DUAL_1, adjs, entity):
     data=np.ones(len(lines))
     graph=csc_matrix((data,(lines,cols)),shape=(len(edges),len(edges)))
     n_l,labels=csgraph.connected_components(graph,connection='strong')
-
+    
     asort=np.argsort(labels)
     slabels=labels[asort]
     sedges=edges[asort]
