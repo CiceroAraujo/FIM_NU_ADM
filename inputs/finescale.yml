@@ -1,6 +1,6 @@
 mesh_generation_parameters:
-  n_blocks: [1, 6, 10]
-  block_size: [1, 1, 1]
+  n_blocks: [6, 10, 6]
+  block_size: [20, 10, 2]
   starting_point: [0, 0, 0]
 
 rock_parameters:

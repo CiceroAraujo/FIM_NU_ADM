@@ -10,7 +10,7 @@ class FieldVisualizer():
     def plot_field(self, values):
         self.grid.point_arrays["values"] = values.flatten().astype(np.float64)  # Flatten the array!
         # self.grid.point_data_to_cell_data['values']=values.flatten().astype(np.float64)
-        self.grid.plot(show_edges=True,cmap='jet')
+        self.grid.plot(show_edges=False,cmap='jet')
 
     def plot_field_plt(self, values):
         print('printing')

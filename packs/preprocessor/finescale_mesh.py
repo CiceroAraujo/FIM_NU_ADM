@@ -27,22 +27,21 @@ def generate_centroids_areas_and_adjacencies(mesh):
     GID_0 = np.arange(len(centroids))
     adjs0 = np.tile(GID_0,(np.array(nb)>1).sum())
     adjs1 = np.array([])
-    sx=1
+    sz=1
     sy=1
-    if nb[0]>1:
-        adjs1 = np.concatenate([adjs1, GID_0+1])
-        sx=nb[0]
-    if nb[1]>1:
-        adjs1 = np.concatenate([adjs1, GID_0+sx])
-        sy=nb[1]
     if nb[2]>1:
-        adjs1 = np.concatenate([adjs1, GID_0+sx*sy])
+        adjs1 = np.concatenate([adjs1, GID_0+1])
+        sz=nb[2]
+    if nb[1]>1:
+        adjs1 = np.concatenate([adjs1, GID_0+sz])
+        sy=nb[1]
+    if nb[0]>1:
+        adjs1 = np.concatenate([adjs1, GID_0+sz*sy])
     adjs1=adjs1.astype(int)
     adjs=np.vstack([adjs0,adjs1]).T
     adjs=adjs[adjs.max(axis=1)<=GID_0.max()]
     dif=abs(centroids[adjs[:,0]]-centroids[adjs[:,1]])
     adjacencies=adjs[((dif>0).sum(axis=1)==1) & ((dif<=lb).sum(axis=1)==3)]
-    import pdb; pdb.set_trace()
     areas=np.array([lb[1]*lb[2], lb[0]*lb[2], lb[0]*lb[1]])
     areas=np.tile(areas,len(adjacencies)).reshape(len(adjacencies),3)[abs(centroids[adjacencies[:,0]]-centroids[adjacencies[:,1]])>0]
     return GID_0, centroids, areas, adjacencies
