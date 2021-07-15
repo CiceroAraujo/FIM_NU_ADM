@@ -5,20 +5,19 @@ from .. import inputs
 
 def get_local_problems_structure(DUAL_1, GID_1, adjacencies):
     ds_edges, local_ID_edges, entity_ID_edges = get_dual_structure(DUAL_1, adjacencies, 2)
-    edge_local_problems = get_prolongation_operator_local_problems(adjacencies, ds_edges, DUAL_1, local_ID_edges)
+    edge_local_problems = get_prolongation_operator_local_problems(adjacencies, ds_edges, DUAL_1, local_ID_edges, entity_ID_edges)
 
     ds_faces, local_ID_faces, entity_ID_faces = get_dual_structure(DUAL_1, adjacencies, 1)
-    face_local_problems = get_prolongation_operator_local_problems(adjacencies, ds_faces, DUAL_1, local_ID_faces)
+    face_local_problems = get_prolongation_operator_local_problems(adjacencies, ds_faces, DUAL_1, local_ID_faces, entity_ID_edges)
 
     ds_internal, local_ID_internal, entity_ID_internal = get_dual_structure(DUAL_1, adjacencies, 0)
-    internal_local_problems = get_prolongation_operator_local_problems(adjacencies, ds_internal, DUAL_1, local_ID_internal)
+    internal_local_problems = get_prolongation_operator_local_problems(adjacencies, ds_internal, DUAL_1, local_ID_internal, entity_ID_faces)
     # entity_ID=np.vstack([entity_ID_edges, entity_ID_faces, entity_ID_internal]).max(axis=0)
     local_ID=np.vstack([local_ID_edges, local_ID_faces, local_ID_internal]).max(axis=0)
-    import pdb; pdb.set_trace()
-    return [edge_local_problems, face_local_problems, internal_local_problems]
+    return [edge_local_problems, face_local_problems, internal_local_problems], local_ID
 
 @profile
-def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, local_ID):
+def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, local_ID, entity_ID_up):
     local_problems=[]
     print(len(entities[0]))
     for i in range(len(entities[0])):
@@ -33,15 +32,17 @@ def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, loca
             if len(entities[j][0])>0:
                 external_faces = entities[j][i]
                 adjs_int_ext = adjacencies[external_faces]
-                int_pos = DUAL_1[adjs_int_ext]==DUAL_1[adjs_int_ext].min()                
+                int_pos = DUAL_1[adjs_int_ext]==DUAL_1[adjs_int_ext].min()
                 internal_gids=adjs_int_ext[int_pos]
                 #_____External influences____
                 external_gids = adjs_int_ext[~int_pos]
+                entity_up_ids = np.unique(entity_ID_up[external_gids]).astype(int)
+
                 l=local_ID[internal_gids]
                 c=np.arange(len(l))
                 d=external_faces+1
                 external_matrix=csc_matrix((d, (l, c)), shape = (local_ID[adjs].max()+1, c.max()+1), dtype=np.float32)
-                external_matrices.append([external_matrix, external_faces, external_gids])
+                external_matrices.append([external_matrix, external_faces, external_gids, entity_up_ids])
                 #_____Internal influences____
                 lines.append(internal_gids)
                 cols.append(internal_gids)
