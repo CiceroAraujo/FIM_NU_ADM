@@ -32,7 +32,7 @@ class NewtonIterationMultilevel:
                     external_gids = local_external_problem[2]
                     entity_up_ids = local_external_problem[3]
                     matrix_connection = local_external_problem[4]
-                    external_acumulator = local_external_problem[5]
+
                     if entity_up_ids.max()>-1:
                         d=[]
                         for e in entity_up_ids:
@@ -40,11 +40,12 @@ class NewtonIterationMultilevel:
                         d=np.concatenate(d)
                         matrix_connection.data=d[matrix_connection.data]
                         external_matrix.data = ts[entries]
+
                         external_matrix = external_matrix*matrix_connection
                     else:
                         external_matrix.data = ts[entries]
 
                 op=-sp.linalg.spsolve(internal_matrix, external_matrix)
-                # import pdb; pdb.set_trace()
+                # print(op.toarray())
                 data=op.data
                 ops[i].append(data)
