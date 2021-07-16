@@ -1,5 +1,5 @@
 mesh_generation_parameters:
-  n_blocks: [6, 10, 6]
+  n_blocks: [60, 220, 85]
   block_size: [20, 10, 2]
   starting_point: [0, 0, 0]
 

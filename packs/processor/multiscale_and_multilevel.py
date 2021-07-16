@@ -15,7 +15,10 @@ class NewtonIterationMultilevel:
             ops.append([])
             i+=1
             for local_problem in structure:
-                internal_matrix = local_problem[0][0]
+                try:
+                    internal_matrix = local_problem[0][0]
+                except:
+                    import pdb; pdb.set_trace()
                 off_diagonal_entries = local_problem[0][1]
                 diagonal_entries = local_problem[0][2]
                 acumulator = local_problem[0][3]
@@ -28,24 +31,20 @@ class NewtonIterationMultilevel:
                     entries = local_external_problem[1]
                     external_gids = local_external_problem[2]
                     entity_up_ids = local_external_problem[3]
+                    matrix_connection = local_external_problem[4]
+                    external_acumulator = local_external_problem[5]
                     if entity_up_ids.max()>-1:
-                        l=[]
-                        c=[]
                         d=[]
                         for e in entity_up_ids:
-                            d.append(ops[i-1][e][0])
-                            l.append(ops[i-1][e][1])
-                            c.append(ops[i-1][e][2])
+                            d.append(ops[i-1][e])
                         d=np.concatenate(d)
-                        import pdb; pdb.set_trace()
-                        l=self.local_ID[np.concatenate(l).astype(int)]
-                        c=self.local_ID[np.concatenate(c).astype(int)]
-                        import pdb; pdb.set_trace()
-
-                    external_matrix.data = ts[entries]
+                        matrix_connection.data=d[matrix_connection.data]
+                        external_matrix.data = ts[entries]
+                        external_matrix = external_matrix*matrix_connection
+                    else:
+                        external_matrix.data = ts[entries]
 
                 op=-sp.linalg.spsolve(internal_matrix, external_matrix)
+                # import pdb; pdb.set_trace()
                 data=op.data
-                g_lines=np.tile(internal_gids,len(external_gids))
-                g_cols=np.repeat(external_gids,len(internal_gids))
-                ops[i].append(np.vstack([data, g_lines, g_cols]))
+                ops[i].append(data)

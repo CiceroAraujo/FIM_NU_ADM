@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.sparse import csc_matrix, csgraph
+from scipy.sparse import csc_matrix, csgraph, find
 import scipy.sparse as sp
 from .. import inputs
 
@@ -21,6 +21,7 @@ def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, loca
     local_problems=[]
     print(len(entities[0]))
     external_connections_out = []
+    map_lc=np.zeros_like(local_ID)
     for i in range(len(entities[0])):
         local_faces = entities[0][i] # Local faces internal internal
         adjs = adjacencies[local_faces]
@@ -39,21 +40,30 @@ def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, loca
                 #_____External influences____
                 external_gids = adjs_int_ext[~int_pos]
                 entity_up_ids = np.unique(entity_ID_up[external_gids]).astype(int)
-                if len(external_connections_in)>0:
-                    aa=np.hstack([external_connections_in[e] for e in entity_up_ids])
-                    # g_lines=local_ID[aa[0:]]
-                    import pdb; pdb.set_trace()
-
-                g_lines=np.tile(internal_gids,len(external_gids))
-                g_cols=np.repeat(external_gids,len(internal_gids))
-                external_connections_out.append([g_lines, g_cols])
 
                 l=local_ID[internal_gids]
                 c=np.arange(len(l))
                 d=external_faces+1
                 external_matrix=csc_matrix((d, (l, c)), shape = (local_ID[adjs].max()+1, c.max()+1), dtype=np.float32)
 
-                external_matrices.append([external_matrix, external_faces, external_gids, entity_up_ids])
+                if len(external_connections_in)>0:
+                    aa=np.hstack([external_connections_in[e] for e in entity_up_ids])
+                    map_lc[np.unique(aa[0,:])]=range(len(np.unique(aa[0,:])))
+                    ls=map_lc[aa[0,:]]
+                    map_lc[np.unique(aa[1,:])]=range(len(np.unique(aa[1,:])))
+                    cs=map_lc[aa[1,:]]
+                    matrix_connection=csc_matrix((np.arange(len(ls)),(ls, cs)), shape=(ls.max()+1,cs.max()+1))
+                    connection_acumulator = np.argsort(cs)
+
+                    # g_lines=local_ID[aa[0:]]
+                else:
+                    matrix_connection=[]
+                    connection_acumulator=[]
+                g_lines=np.tile(np.unique(adjs),len(external_gids))
+                g_cols=np.repeat(external_gids,len(np.unique(adjs)))
+                external_connections_out.append([g_lines, g_cols])
+
+                external_matrices.append([external_matrix, external_faces, external_gids, entity_up_ids, matrix_connection, connection_acumulator])
                 #_____Internal influences____
                 lines.append(internal_gids)
                 cols.append(internal_gids)
