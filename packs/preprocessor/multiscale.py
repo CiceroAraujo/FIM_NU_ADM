@@ -5,21 +5,22 @@ from .. import inputs
 
 def get_local_problems_structure(DUAL_1, GID_1, adjacencies):
     ds_edges, local_ID_edges, entity_ID_edges = get_dual_structure(DUAL_1, adjacencies, 2)
-    edge_local_problems = get_prolongation_operator_local_problems(adjacencies, ds_edges, DUAL_1, local_ID_edges, entity_ID_edges)
+    edge_local_problems, edge2face_connections = get_prolongation_operator_local_problems(adjacencies, ds_edges, DUAL_1, local_ID_edges, entity_ID_edges, [])
 
     ds_faces, local_ID_faces, entity_ID_faces = get_dual_structure(DUAL_1, adjacencies, 1)
-    face_local_problems = get_prolongation_operator_local_problems(adjacencies, ds_faces, DUAL_1, local_ID_faces, entity_ID_edges)
+    face_local_problems, face2internal_connections = get_prolongation_operator_local_problems(adjacencies, ds_faces, DUAL_1, local_ID_faces, entity_ID_edges, edge2face_connections)
 
     ds_internal, local_ID_internal, entity_ID_internal = get_dual_structure(DUAL_1, adjacencies, 0)
-    internal_local_problems = get_prolongation_operator_local_problems(adjacencies, ds_internal, DUAL_1, local_ID_internal, entity_ID_faces)
+    internal_local_problems, _ = get_prolongation_operator_local_problems(adjacencies, ds_internal, DUAL_1, local_ID_internal, entity_ID_faces, face2internal_connections)
     # entity_ID=np.vstack([entity_ID_edges, entity_ID_faces, entity_ID_internal]).max(axis=0)
     local_ID=np.vstack([local_ID_edges, local_ID_faces, local_ID_internal]).max(axis=0)
     return [edge_local_problems, face_local_problems, internal_local_problems], local_ID
 
 @profile
-def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, local_ID, entity_ID_up):
+def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, local_ID, entity_ID_up, external_connections_in):
     local_problems=[]
     print(len(entities[0]))
+    external_connections_out = []
     for i in range(len(entities[0])):
         local_faces = entities[0][i] # Local faces internal internal
         adjs = adjacencies[local_faces]
@@ -28,6 +29,7 @@ def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, loca
         internal_off_diag_entries = np.concatenate([local_faces, local_faces])
         internal_diag_entries = [local_faces, local_faces]
         external_matrices=[]
+
         for j in range(1,len(entities)):
             if len(entities[j][0])>0:
                 external_faces = entities[j][i]
@@ -37,11 +39,20 @@ def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, loca
                 #_____External influences____
                 external_gids = adjs_int_ext[~int_pos]
                 entity_up_ids = np.unique(entity_ID_up[external_gids]).astype(int)
+                if len(external_connections_in)>0:
+                    aa=np.hstack([external_connections_in[e] for e in entity_up_ids])
+                    # g_lines=local_ID[aa[0:]]
+                    import pdb; pdb.set_trace()
+
+                g_lines=np.tile(internal_gids,len(external_gids))
+                g_cols=np.repeat(external_gids,len(internal_gids))
+                external_connections_out.append([g_lines, g_cols])
 
                 l=local_ID[internal_gids]
                 c=np.arange(len(l))
                 d=external_faces+1
                 external_matrix=csc_matrix((d, (l, c)), shape = (local_ID[adjs].max()+1, c.max()+1), dtype=np.float32)
+
                 external_matrices.append([external_matrix, external_faces, external_gids, entity_up_ids])
                 #_____Internal influences____
                 lines.append(internal_gids)
@@ -59,7 +70,7 @@ def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, loca
         else:
             i_matrix_structure=[]
         local_problems.append([i_matrix_structure, external_matrices])
-    return local_problems
+    return local_problems, external_connections_out
 
 def get_dual_and_primal_1(centroids):
     maxs=centroids.max(axis=0)
@@ -120,6 +131,8 @@ def get_dual_structure(DUAL_1, adjs, entity):
     dual_adjs=DUAL_1[adjs]
     all_faces=np.arange(len(adjs))
     ee=(dual_adjs==entity).sum(axis=1)==2
+
+
     ev=adjs[ee]
     edges=np.unique(ev)
     mapd=np.arange(adjs.max()+1)
