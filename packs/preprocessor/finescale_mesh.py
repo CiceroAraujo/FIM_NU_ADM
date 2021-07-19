@@ -65,9 +65,9 @@ def get_permeability_and_porosity(centroids, rock, mgp):
         porosities=phi[ee]
 
     if rock['constant_porosity']:
-        porosities=rock['porosity_value']
-    if rock['constant_permeability']:
-        permeabilities=rock['permeability_value']
+        porosities=np.repeat(rock['porosity_value'],len(centroids))
+    if rock['constant_permeability']:        
+        permeabilities=np.tile(rock['permeability_value'],len(centroids)).reshape(centroids.shape)
     return permeabilities, porosities
 
 def get_k_harm_faces(centroids, adjs, areas, ks):

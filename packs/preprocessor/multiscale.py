@@ -45,26 +45,22 @@ def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, loca
                 c=np.arange(len(l))
                 d=external_faces+1
                 external_matrix=csc_matrix((d, (l, c)), shape = (local_ID[adjs].max()+1, c.max()+1), dtype=np.float32)
-
                 if len(external_connections_in)>0:
-                    aa=np.hstack([external_connections_in[e] for e in entity_up_ids])
+                    aa=np.hstack([external_connections_in[e] for e in entity_up_ids])                    
                     map_lc[np.unique(aa[0,:])]=range(len(np.unique(aa[0,:])))
                     ls=map_lc[aa[0,:]]
                     map_lc[np.unique(aa[1,:])]=range(len(np.unique(aa[1,:])))
                     cs=map_lc[aa[1,:]]
+
                     matrix_connection=csc_matrix((np.arange(len(ls)),(ls, cs)), shape=(ls.max()+1,cs.max()+1))
                     g_lines=np.tile(np.unique(adjs),len(np.unique(aa[1,:])))
                     g_cols=np.repeat(np.unique(aa[1,:]),len(np.unique(adjs)))
-                    # import pdb; pdb.set_trace()
                 else:
                     matrix_connection=[]
                     g_lines=np.tile(np.unique(adjs),len(external_gids))
                     g_cols=np.repeat(external_gids,len(np.unique(adjs)))
-
-
                 external_connections_out.append([g_lines, g_cols])
-
-                external_matrices.append([external_matrix, external_faces, external_gids, entity_up_ids, matrix_connection])
+                external_matrices.append([external_matrix, external_faces, external_gids, entity_up_ids, matrix_connection, np.unique(g_cols)])
                 #_____Internal influences____
                 lines.append(internal_gids)
                 cols.append(internal_gids)
@@ -128,15 +124,6 @@ def get_dual_and_primal_1(centroids):
                 GID_1[vz]=count
                 count+=1
     return GID_1, DUAL_1
-
-def get_vertices_OP(DUAL_1, GID_1):
-    all_volumes=np.arange(len(DUAL_1))
-    vertices=DUAL_1==3
-    gid0=all_volumes[vertices]
-    gid1=GID_1[vertices]
-    data=np.ones_like(gid1)
-    lcd=np.vstack([gid0, gid1, data])
-    return lcd
 
 def get_dual_structure(DUAL_1, adjs, entity):
     dual_adjs=DUAL_1[adjs]

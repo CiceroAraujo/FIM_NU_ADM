@@ -1,11 +1,11 @@
 mesh_generation_parameters:
-  n_blocks: [60, 220, 85]
-  block_size: [20, 10, 2]
+  n_blocks: [4, 4, 1]
+  block_size: [1, 1, 1]
   starting_point: [0, 0, 0]
 
 rock_parameters:
-  constant_permeability: false
-  constant_porosity: false
+  constant_permeability: true
+  constant_porosity: true
   file_infos:
     name: inputs/spe10_perms_and_phi.npz # if Ks is not constant
     nblocks: [60, 220, 85]
