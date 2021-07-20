@@ -21,7 +21,8 @@ def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, loca
     local_problems=[]
     print(len(entities[0]))
     external_connections_out = []
-    map_lc=np.zeros_like(local_ID)
+    map_v=np.zeros_like(local_ID)
+    map_l=np.zeros_like(local_ID)
     for i in range(len(entities[0])):
         local_faces = entities[0][i] # Local faces internal internal
         adjs = adjacencies[local_faces]
@@ -40,18 +41,18 @@ def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, loca
                 #_____External influences____
                 external_gids = adjs_int_ext[~int_pos]
                 entity_up_ids = np.unique(entity_ID_up[external_gids]).astype(int)
-
                 l=local_ID[internal_gids]
-                c=np.arange(len(l))
+                map_l[np.unique(external_gids)]=range(len(np.unique(external_gids)))
+                c=map_l[external_gids]
                 d=external_faces+1
                 external_matrix=csc_matrix((d, (l, c)), shape = (local_ID[adjs].max()+1, c.max()+1), dtype=np.float32)
                 if len(external_connections_in)>0:
-                    aa=np.hstack([external_connections_in[e] for e in entity_up_ids])                    
-                    map_lc[np.unique(aa[0,:])]=range(len(np.unique(aa[0,:])))
-                    ls=map_lc[aa[0,:]]
-                    map_lc[np.unique(aa[1,:])]=range(len(np.unique(aa[1,:])))
-                    cs=map_lc[aa[1,:]]
-
+                    aa=np.hstack([external_connections_in[e] for e in entity_up_ids])
+                    ls=map_l[aa[0,:]]
+                    map_v[np.unique(aa[1,:])]=range(len(np.unique(aa[1,:])))
+                    cs=map_v[aa[1,:]]
+                    # map_l[np.unique(aa[0,:])]=range(len(np.unique(aa[0,:])))
+                    # import pdb; pdb.set_trace()
                     matrix_connection=csc_matrix((np.arange(len(ls)),(ls, cs)), shape=(ls.max()+1,cs.max()+1))
                     g_lines=np.tile(np.unique(adjs),len(np.unique(aa[1,:])))
                     g_cols=np.repeat(np.unique(aa[1,:]),len(np.unique(adjs)))
@@ -94,7 +95,7 @@ def get_dual_and_primal_1(centroids):
             xd[i]=np.unique(np.concatenate([[mins[i], maxs[i]],(xd[i]+0.5)*block_size[i]]))
         else:
             xd[i]=np.unique(np.array([mins[i], maxs[i]]))
-
+    import pdb; pdb.set_trace()
     d=np.zeros(len(centroids))
     for i in range(3):
         for x in xd[i]:

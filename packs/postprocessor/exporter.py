@@ -7,18 +7,18 @@ class FieldVisualizer():
     def __init__(self):
         self.grid=self.get_grid()
 
-    def plot_field(self, values):
-        self.grid.point_arrays["values"] = values.flatten().astype(np.float64)  # Flatten the array!
-        # self.grid.point_data_to_cell_data['values']=values.flatten().astype(np.float64)
+    def plot_labels(self, values):
+        self.grid.point_arrays["values"] = values.flatten().astype(np.float64)  # Flatten the array!        
         plotter = pv.Plotter()
         plotter.add_mesh(self.grid, show_edges=True, color="tan")
-        # plotter.add_point_labels(values)
         points = self.grid.points
         mask = points[:, 0] == 0
-        # import pdb; pdb.set_trace()
         plotter.add_point_labels(points, values.round(2).tolist(), point_size=20, font_size=15)
         plotter.show()
-        import pdb; pdb.set_trace()
+
+
+    def plot_field(self, values):
+        self.grid.point_arrays["values"] = values.flatten().astype(np.float64)  # Flatten the array!
         self.grid.plot(show_edges=True,cmap='jet')
 
     def plot_field_plt(self, values):
