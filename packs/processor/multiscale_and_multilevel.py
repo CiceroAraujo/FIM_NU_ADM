@@ -43,27 +43,18 @@ class NewtonIterationMultilevel:
                         for e in entity_up_ids:
                             d.append(ops[i-1][e])
                         d=np.concatenate(d)
-                        
                         matrix_connection.data=d[matrix_connection.data]
                         external_matrix.data = ts[entries]
-                        # import pdb; pdb.set_trace()
-                        external_matrix = external_matrix*matrix_connection
-
+                        external_matrix = external_matrix*matrix_connection                        
                     else:
                         external_matrix.data = ts[entries]
                         entity_up_ids=external_gids
                 op=-sp.linalg.spsolve(internal_matrix, external_matrix)
-                # if op.shape[0]==4:
-                #     import pdb; pdb.set_trace()
                 fop=sp.find(op)
                 glines.append(internal_gids[fop[0]])
-                try:
-                    gcols.append(columns[fop[1]])
-                except:
-                    import pdb; pdb.set_trace()
+                gcols.append(columns[fop[1]])
                 gdata.append(fop[2])
                 data=op.data
-                # import pdb; pdb.set_trace()
                 ops[i].append(data)
 
         all_volumes=np.arange(len(self.DUAL_1))

@@ -40,26 +40,32 @@ def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, loca
                 internal_gids=adjs_int_ext[int_pos]
                 #_____External influences____
                 external_gids = adjs_int_ext[~int_pos]
+                asort=np.argsort(internal_gids)
+                # import pdb; pdb.set_trace()
                 entity_up_ids = np.unique(entity_ID_up[external_gids]).astype(int)
                 l=local_ID[internal_gids]
-                map_l[np.unique(external_gids)]=range(len(np.unique(external_gids)))
+                map_l[np.unique(external_gids)]=np.arange(len(np.unique(external_gids)))
                 c=map_l[external_gids]
                 d=external_faces+1
                 external_matrix=csc_matrix((d, (l, c)), shape = (local_ID[adjs].max()+1, c.max()+1), dtype=np.float32)
                 if len(external_connections_in)>0:
                     aa=np.hstack([external_connections_in[e] for e in entity_up_ids])
+                    map_l[np.unique(aa[0,:])]=np.arange(len(np.unique(aa[0,:])))
                     ls=map_l[aa[0,:]]
-                    map_v[np.unique(aa[1,:])]=range(len(np.unique(aa[1,:])))
+
+                    map_v[np.unique(aa[1,:])]=np.arange(len(np.unique(aa[1,:])))
                     cs=map_v[aa[1,:]]
                     # map_l[np.unique(aa[0,:])]=range(len(np.unique(aa[0,:])))
                     # import pdb; pdb.set_trace()
                     matrix_connection=csc_matrix((np.arange(len(ls)),(ls, cs)), shape=(ls.max()+1,cs.max()+1))
                     g_lines=np.tile(np.unique(adjs),len(np.unique(aa[1,:])))
                     g_cols=np.repeat(np.unique(aa[1,:]),len(np.unique(adjs)))
+
                 else:
                     matrix_connection=[]
                     g_lines=np.tile(np.unique(adjs),len(external_gids))
                     g_cols=np.repeat(external_gids,len(np.unique(adjs)))
+                    import pdb; pdb.set_trace()                    
                 external_connections_out.append([g_lines, g_cols])
                 external_matrices.append([external_matrix, external_faces, external_gids, entity_up_ids, matrix_connection, np.unique(g_cols)])
                 #_____Internal influences____
@@ -87,16 +93,16 @@ def get_dual_and_primal_1(centroids):
     n_blocks=np.array(inputs.finescale_inputs['mesh_generation_parameters']['n_blocks'])
     block_size=np.array(inputs.finescale_inputs['mesh_generation_parameters']['block_size'])
     n_duals=n_blocks//cr1
-    second_line = (n_blocks-n_duals*cr1)//2
+    second_line = (n_blocks-(n_duals-1)*cr1)//2
     xd=[]
     for i in range(3):
-        xd.append(np.arange(second_line[i]+cr1[i],n_duals[i]*cr1[i],cr1[i]))
-        if len(xd[i])>1:
+        xd.append(np.arange(second_line[i]+cr1[i],(n_duals[i]-1)*cr1[i],cr1[i]))
+        if len(xd[i])>0:
             xd[i]=np.unique(np.concatenate([[mins[i], maxs[i]],(xd[i]+0.5)*block_size[i]]))
         else:
             xd[i]=np.unique(np.array([mins[i], maxs[i]]))
-    import pdb; pdb.set_trace()
     d=np.zeros(len(centroids))
+
     for i in range(3):
         for x in xd[i]:
             d+=centroids[:,i]==x

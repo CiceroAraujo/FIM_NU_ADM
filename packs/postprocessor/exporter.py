@@ -8,7 +8,7 @@ class FieldVisualizer():
         self.grid=self.get_grid()
 
     def plot_labels(self, values):
-        self.grid.point_arrays["values"] = values.flatten().astype(np.float64)  # Flatten the array!        
+        self.grid.point_arrays["values"] = values.flatten().astype(np.float64)  # Flatten the array!
         plotter = pv.Plotter()
         plotter.add_mesh(self.grid, show_edges=True, color="tan")
         points = self.grid.points
@@ -41,13 +41,13 @@ class FieldVisualizer():
 
     def get_grid(self):
         mesh = inputs['mesh_generation_parameters']
-        nb=np.array(mesh['n_blocks'])[[0,1,2]]
-        lb=np.array(mesh['block_size'])[[0,1,2]]
+        nb=np.array(mesh['n_blocks'])[[1,0,2]]
+        lb=np.array(mesh['block_size'])[[1,0,2]]
         sp=np.array([0,0,0])
 
         # values=np.arange(nb[0]*nb[1]*nb[2]).reshape(nb)
         grid = pv.UniformGrid()
         grid.dimensions = nb
         grid.origin = sp  # The bottom left corner of the data set
-        grid.spacing = lb  # These are the cell sizes along each axis
+        grid.spacing = lb  # These are the cell sizes along each axis        
         return grid
