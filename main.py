@@ -25,10 +25,10 @@ wells['count']=0
 # visualize.plot_field_plt(np.log10(volumes['Kxx']))
 # visualize.plot_field(np.log10(volumes['Kxx']))
 # visualize.plot_field
-visualize.plot_labels(multilevel.OP[:,1].T.toarray()[0])
+# visualize.plot_labels(multilevel.OP[:,0].T.toarray()[0])
 # visualize.plot_labels(ope[:,4].T.toarray()[0])
-# visualize.plot_field(multilevel.OP[:,4].T.toarray()[0])
-# visualize.plot_field(np.arange(len(volumes['GID_0'])))
+visualize.plot_field(multilevel.OP[:,1].T.toarray()[0])
+# visualize.plot_labels(np.arange(len(volumes['GID_0'])))
 import pdb; pdb.set_trace()
 # visualize.plot_field(volumes['GID_0'])
 count=0

@@ -13,7 +13,7 @@ class FieldVisualizer():
         plotter.add_mesh(self.grid, show_edges=True, color="tan")
         points = self.grid.points
         mask = points[:, 0] == 0
-        plotter.add_point_labels(points, values.round(2).tolist(), point_size=20, font_size=15)
+        plotter.add_point_labels(points, values.round(3).tolist(), point_size=20, font_size=15)
         plotter.show()
 
 
@@ -49,5 +49,5 @@ class FieldVisualizer():
         grid = pv.UniformGrid()
         grid.dimensions = nb
         grid.origin = sp  # The bottom left corner of the data set
-        grid.spacing = lb  # These are the cell sizes along each axis        
+        grid.spacing = lb  # These are the cell sizes along each axis
         return grid

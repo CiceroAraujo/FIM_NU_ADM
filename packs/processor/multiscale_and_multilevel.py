@@ -10,7 +10,7 @@ class NewtonIterationMultilevel:
 
     @profile
     def get_prolongation_operator(self, ts):
-        np.set_printoptions(3)
+        # np.set_printoptions(5)
         i=-1
         ops = []
         glines=[]
@@ -45,7 +45,7 @@ class NewtonIterationMultilevel:
                         d=np.concatenate(d)
                         matrix_connection.data=d[matrix_connection.data]
                         external_matrix.data = ts[entries]
-                        external_matrix = external_matrix*matrix_connection                        
+                        external_matrix = external_matrix*matrix_connection
                     else:
                         external_matrix.data = ts[entries]
                         entity_up_ids=external_gids
@@ -53,7 +53,7 @@ class NewtonIterationMultilevel:
                 fop=sp.find(op)
                 glines.append(internal_gids[fop[0]])
                 gcols.append(columns[fop[1]])
-                gdata.append(fop[2])
+                gdata.append(fop[2])                
                 data=op.data
                 ops[i].append(data)
 
@@ -65,7 +65,7 @@ class NewtonIterationMultilevel:
 
         glines=np.concatenate(glines)
         gcols=np.concatenate(gcols)
-        mapg=np.arange(gcols.max()+1)
+        mapg=-np.ones(gcols.max()+1).astype(int)
         mapg[np.unique(gcols)]=np.arange(len(np.unique(gcols)))
         gcols=mapg[gcols]
         gdata=np.concatenate(gdata)
