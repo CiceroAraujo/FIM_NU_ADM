@@ -3,14 +3,16 @@ import scipy.sparse as sp
 from ..preprocessor.multiscale import get_dual_and_primal_1, get_local_problems_structure
 class NewtonIterationMultilevel:
     def __init__(self, wells, faces, volumes):
+        self.GID_0=volumes['GID_0']
         self.GID_1, self.DUAL_1 = get_dual_and_primal_1(volumes['centroids'])
         self.local_problems_structure, self.local_ID = get_local_problems_structure(self.DUAL_1, self.GID_1, faces['adjacent_volumes'])
         self.OP = self.get_prolongation_operator(faces['permeabilities'])
-
+        self.update_NU_ADM_mesh(np.array([1, -2]))
+        self.update_NU_ADM_OP()
 
     @profile
     def get_prolongation_operator(self, ts):
-        # np.set_printoptions(5)
+        np.set_printoptions(3)
         i=-1
         ops = []
         glines=[]
@@ -53,7 +55,9 @@ class NewtonIterationMultilevel:
                 fop=sp.find(op)
                 glines.append(internal_gids[fop[0]])
                 gcols.append(columns[fop[1]])
-                gdata.append(fop[2])                
+                gdata.append(fop[2])
+
+
                 data=op.data
                 ops[i].append(data)
 
@@ -71,3 +75,36 @@ class NewtonIterationMultilevel:
         gdata=np.concatenate(gdata)
         op=sp.csc_matrix((gdata, (glines, gcols)), shape=(glines.max()+1, gcols.max()+1))
         return op
+
+    def update_NU_ADM_mesh(self, fs_vols):
+        self.fs_vols=fs_vols
+        self.levels=np.ones_like(self.GID_1)
+        self.NU_ADM_ID = -self.levels
+        self.levels[fs_vols]=0
+        coarse_volumes =  self.levels==1
+        self.NU_ADM_ID[coarse_volumes]=self.GID_1[coarse_volumes]
+        all_cvs=np.unique(self.NU_ADM_ID)
+        if all_cvs.min()==-1:
+            all_cvs=all_cvs[1:]
+        remaining_ids=np.setdiff1d(np.unique(self.GID_1), all_cvs)
+        nids=len(fs_vols)-len(remaining_ids)
+        ids=np.concatenate([remaining_ids, self.NU_ADM_ID.max()+np.arange(nids)+1])
+        self.NU_ADM_ID[fs_vols]=ids
+
+    def update_NU_ADM_OP(self):
+        l, c, d=sp.find(self.OP)
+        coarse=self.levels[l]==1
+        mapc = np.unique(self.NU_ADM_ID[self.DUAL_1==3])
+        lines = l[coarse]
+        cols = mapc[c[coarse]]
+        data = d[coarse]
+
+        ls = self.GID_0[self.fs_vols]
+        cs = self.NU_ADM_ID[self.fs_vols]
+        ds = -np.ones_like(cs)
+        # import pdb; pdb.set_trace()
+        lines = np.concatenate([lines, ls])
+        cols = np.concatenate([cols, cs])
+        data = np.concatenate([data, ds])
+        self.NU_ADM_OP = sp.csc_matrix((data, (lines, cols)), shape=(lines.max()+1, cols.max()+1))
+        # import pdb; pdb.set_trace()

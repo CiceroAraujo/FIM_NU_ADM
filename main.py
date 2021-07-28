@@ -19,7 +19,7 @@ wells['count']=0
 
 
 # visualize.plot_field(multilevel.DUAL_1)
-# visualize.plot_field(multilevel.GID_1)
+visualize.plot_labels(multilevel.NU_ADM_ID)
 # import pdb; pdb.set_trace()
 
 # visualize.plot_field_plt(np.log10(volumes['Kxx']))
@@ -27,7 +27,9 @@ wells['count']=0
 # visualize.plot_field
 # visualize.plot_labels(multilevel.OP[:,0].T.toarray()[0])
 # visualize.plot_labels(ope[:,4].T.toarray()[0])
-visualize.plot_field(multilevel.OP[:,1].T.toarray()[0])
+# import pdb; pdb.set_trace()
+visualize.plot_labels(multilevel.NU_ADM_OP[:,0].T.toarray()[0])
+# visualize.plot_field(multilevel.OP[:,1].T.toarray()[0])
 # visualize.plot_labels(np.arange(len(volumes['GID_0'])))
 import pdb; pdb.set_trace()
 # visualize.plot_field(volumes['GID_0'])
