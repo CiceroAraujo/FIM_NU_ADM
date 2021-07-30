@@ -7,7 +7,7 @@ class NewtonIterationMultilevel:
         self.GID_1, self.DUAL_1 = get_dual_and_primal_1(volumes['centroids'])
         self.local_problems_structure, self.local_ID = get_local_problems_structure(self.DUAL_1, self.GID_1, faces['adjacent_volumes'])
         self.OP = self.get_prolongation_operator(faces['permeabilities'])
-        self.update_NU_ADM_mesh(np.array([1, -2]))
+        self.update_NU_ADM_mesh(np.array([0,10,11,14, 15]))
         self.update_NU_ADM_OP()
 
     @profile
@@ -56,8 +56,6 @@ class NewtonIterationMultilevel:
                 glines.append(internal_gids[fop[0]])
                 gcols.append(columns[fop[1]])
                 gdata.append(fop[2])
-
-
                 data=op.data
                 ops[i].append(data)
 
@@ -88,23 +86,30 @@ class NewtonIterationMultilevel:
             all_cvs=all_cvs[1:]
         remaining_ids=np.setdiff1d(np.unique(self.GID_1), all_cvs)
         nids=len(fs_vols)-len(remaining_ids)
-        ids=np.concatenate([remaining_ids, self.NU_ADM_ID.max()+np.arange(nids)+1])
+        ids=np.concatenate([remaining_ids, self.GID_1.max()+np.arange(nids)+1])
         self.NU_ADM_ID[fs_vols]=ids
+
+        self.vertices=self.GID_0[self.DUAL_1==3]
+        gid1=self.GID_1[self.vertices]
+        for rgid in remaining_ids:
+            if rgid in gid1:
+                gid1[gid1==rgid]=self.NU_ADM_ID[self.vertices[self.GID_1[self.vertices]==rgid]]
+        self.coarse_id_NU_ADM=gid1
 
     def update_NU_ADM_OP(self):
         l, c, d=sp.find(self.OP)
         coarse=self.levels[l]==1
-        mapc = np.unique(self.NU_ADM_ID[self.DUAL_1==3])
+        mapc = np.unique(self.coarse_id_NU_ADM)
         lines = l[coarse]
         cols = mapc[c[coarse]]
         data = d[coarse]
 
-        ls = self.GID_0[self.fs_vols]
+        ls = self.fs_vols
         cs = self.NU_ADM_ID[self.fs_vols]
-        ds = -np.ones_like(cs)
-        # import pdb; pdb.set_trace()
+        ds = np.ones_like(cs)
+
         lines = np.concatenate([lines, ls])
         cols = np.concatenate([cols, cs])
         data = np.concatenate([data, ds])
+
         self.NU_ADM_OP = sp.csc_matrix((data, (lines, cols)), shape=(lines.max()+1, cols.max()+1))
-        # import pdb; pdb.set_trace()
