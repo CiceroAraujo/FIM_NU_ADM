@@ -18,11 +18,12 @@ time_step=0.0005
 wells['count']=0
 
 multilevel.get_finescale_vols()
-multilevel.update_NU_ADM_mesh2()
+multilevel.update_NU_ADM_mesh()
+multilevel.update_NU_ADM_operators()
 # import pdb; pdb.set_trace()
-# visualize.plot_labels(multilevel.GID_1)
-visualize.plot_labels(multilevel.NU_ADM_ID)
-import pdb; pdb.set_trace()
+# # visualize.plot_labels(multilevel.GID_1)
+# visualize.plot_labels(multilevel.NU_ADM_ID)
+# import pdb; pdb.set_trace()
 # visualize.plot_labels(multilevel.GID_1)
 # visualize.plot_labels(multilevel.GID_0)
 # import pdb; pdb.set_trace()
@@ -30,7 +31,7 @@ import pdb; pdb.set_trace()
 # visualize.plot_field_plt(np.log10(volumes['Kxx']))
 # visualize.plot_field(np.log10(volumes['Kxx']))
 # visualize.plot_field
-# visualize.plot_labels(multilevel.OP[:,0].T.toarray()[0])
+visualize.plot_labels(multilevel.NU_ADM_OP[:,1].T.toarray()[0])
 # visualize.plot_labels(ope[:,4].T.toarray()[0])
 
 # visualize.plot_labels(multilevel.NU_ADM_OP[:,0].T.toarray()[0])

@@ -2,6 +2,8 @@ import numpy as np
 import scipy.sparse as sp
 from ..preprocessor.multiscale import get_dual_and_primal_1, get_local_problems_structure
 from .assembler import Assembler
+from packs.postprocessor.exporter import FieldVisualizer
+visualize=FieldVisualizer()
 
 class NewtonIterationMultilevel:
     def __init__(self, wells, faces, volumes):
@@ -31,7 +33,6 @@ class NewtonIterationMultilevel:
         glines=[]
         gcols=[]
         gdata=[]
-        # import pdb; pdb.set_trace()
         if len(self.local_problems_structure[-1][0][0])==0:
             self.local_problems_structure=self.local_problems_structure[:-1]
         for structure in self.local_problems_structure:
@@ -87,7 +88,7 @@ class NewtonIterationMultilevel:
         op=sp.csc_matrix((gdata, (glines, gcols)), shape=(glines.max()+1, gcols.max()+1))
         return op
 
-    def update_NU_ADM_mesh2(self):
+    def update_NU_ADM_mesh(self):
         # self.fs_vols=fs_vols
         self.levels=np.ones_like(self.GID_1)
         self.NU_ADM_ID = -self.levels
@@ -104,9 +105,10 @@ class NewtonIterationMultilevel:
         graph = sp.csc_matrix((data, (adjs[:,0], adjs[:,1])),shape=(n,n))
         n,labels=sp.csgraph.connected_components(graph)
         self.NU_ADM_ID=labels
-        # import pdb; pdb.set_trace()
+        gid1=self.GID_1[self.GID_0[self.DUAL_1==3]]
+        self.coarse_id_NU_ADM=gid1
 
-    def update_NU_ADM_mesh(self):
+    def update_NU_ADM_mesh_dep(self):
         # self.fs_vols=fs_vols
         self.levels=np.ones_like(self.GID_1)
         self.NU_ADM_ID = -self.levels
@@ -131,11 +133,15 @@ class NewtonIterationMultilevel:
     def update_NU_ADM_operators(self):
         l, c, d=sp.find(self.OP)
         coarse=self.levels[l]==1
-        mapc = np.unique(self.coarse_id_NU_ADM)
+        mapc = self.NU_ADM_ID[self.DUAL_1==3]
         lines = l[coarse]
         cols = mapc[c[coarse]]
+        # import pdb; pdb.set_trace()
+        same=self.GID_1[lines]==c[coarse]
+        cols[same]=self.NU_ADM_ID[lines[same]]
+        # import pdb; pdb.set_trace()
+        # cols = self.NU_ADM_ID[lines]
         data = d[coarse]
-
         ls = self.fs_vols
         cs = self.NU_ADM_ID[self.fs_vols]
         ds = np.ones_like(cs)
@@ -145,6 +151,11 @@ class NewtonIterationMultilevel:
         data = np.concatenate([data, ds])
 
         self.NU_ADM_OP = sp.csc_matrix((data, (lines, cols)), shape=(lines.max()+1, cols.max()+1))
+        # import pdb; pdb.set_trace()
+        visualize.plot_labels(self.OP[:,4].T.toarray()[0])
+        visualize.plot_labels(self.NU_ADM_OP[:,12].T.toarray()[0])
+        visualize.plot_labels(self.NU_ADM_ID)
+        import pdb; pdb.set_trace()
         cols = self.GID_0
         lines = self.NU_ADM_ID
         data = np.ones(len(lines))
@@ -176,7 +187,6 @@ class NewtonIterationMultilevel:
             swns[self.Assembler.wells['ws_inj']]=1
             J, q=self.Assembler.get_jacobian_matrix(swns, swn1s, pressure, time_step)
             R, P = self.get_operators()
-
             sol=-P*sp.linalg.spsolve(R*J*P, R*q)
             n=int(len(q)/2)
             pressure+=sol[0:n]
