@@ -16,7 +16,7 @@ def get_local_problems_structure(DUAL_1, GID_1, adjacencies):
     local_ID=np.vstack([local_ID_edges, local_ID_faces, local_ID_internal]).max(axis=0)
     return [edge_local_problems, face_local_problems, internal_local_problems], local_ID
 
-@profile
+# @profile
 def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, local_ID, entity_ID_up, external_connections_in):
     local_problems=[]
     print(len(entities[0]))
@@ -88,7 +88,7 @@ def get_dual_and_primal_1(centroids):
     cr1=np.array(inputs.multiscale_and_multilevel_inputs['multiscale']['coarsening_ratio_1'])
     n_blocks=np.array(inputs.finescale_inputs['mesh_generation_parameters']['n_blocks'])
     block_size=np.array(inputs.finescale_inputs['mesh_generation_parameters']['block_size'])
-    n_duals=n_blocks//cr1
+    n_duals=n_blocks//cr1+1
     second_line = (n_blocks-(n_duals-1)*cr1)//2
     xd=[]
     for i in range(3):
@@ -116,7 +116,7 @@ def get_dual_and_primal_1(centroids):
 
     zp=np.array(mins[2]-1)
     zp=np.append(zp,(xd[2][:-1]+xd[2][1:])/2)
-    zp=np.append(zp,maxs[2]+1)
+    zp=np.append(zp,maxs[2]+1)    
     count=0
     for i in range(len(xp)-1):
         vx=volumes[(centroids[:,0]>=xp[i]) & (centroids[:,0]<xp[i+1])]
