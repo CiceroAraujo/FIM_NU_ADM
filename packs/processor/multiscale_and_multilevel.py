@@ -27,7 +27,6 @@ class NewtonIterationMultilevel:
 
 
     def get_prolongation_operator(self, ts):
-        np.set_printoptions(3)
         i=-1
         ops = []
         glines=[]
@@ -59,13 +58,15 @@ class NewtonIterationMultilevel:
                         for e in entity_up_ids:
                             d.append(ops[i-1][e])
                         d=np.concatenate(d)
-                        matrix_connection.data=d[matrix_connection.data]
+                        # import pdb; pdb.set_trace()
+                        matrix_connection.data=d[matrix_connection.data-1]
                         external_matrix.data = ts[entries]
                         external_matrix = external_matrix*matrix_connection
                     else:
                         external_matrix.data = ts[entries]
                         entity_up_ids=external_gids
                 op=-sp.linalg.spsolve(internal_matrix, external_matrix)
+
                 fop=sp.find(op)
                 glines.append(internal_gids[fop[0]])
                 gcols.append(columns[fop[1]])

@@ -41,26 +41,41 @@ def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, loca
                 #_____External influences____
                 external_gids = adjs_int_ext[~int_pos]
                 entity_up_ids = np.unique(entity_ID_up[external_gids]).astype(int)
+                # import pdb; pdb.set_trace()
+                # print(entity_up_ids)
                 l=local_ID[internal_gids]
                 map_l[np.unique(external_gids)]=np.arange(len(np.unique(external_gids)))
                 c=map_l[external_gids]
                 d=external_faces.copy()
-
-                external_matrix=csc_matrix((d, (l, c)), shape = (local_ID[adjs].max()+1, c.max()+1), dtype=np.float32)
+                external_matrix=csc_matrix((d, (l, c)), shape = (l.max()+1, c.max()+1), dtype=np.float32)
                 if len(external_connections_in)>0:
+
                     aa=np.hstack([external_connections_in[e] for e in entity_up_ids])
-                    # map_l[np.unique(aa[0,:])]=np.arange(len(np.unique(aa[0,:])))
+                    map_l[np.unique(aa[0,:])]=np.arange(len(np.unique(aa[0,:])))#[np.argsort(entity_ID_up[external_gids])]
                     ls=map_l[aa[0,:]]
-                    map_v[np.unique(aa[1,:])]=np.arange(len(np.unique(aa[1,:])))
+                    map_v[np.unique(aa[1,:])]=np.arange(len(np.unique(aa[1,:])))#[np.argsort(internal_gids)]
+                    # import pdb; pdb.set_trace()
                     cs=map_v[aa[1,:]]
+                    # import pdb; pdb.set_trace()
+                    # asort=np.lexsort((aa[0,:],aa[1,:]))
+                    # ls=ls[asort]
+                    # cs=cs[asort]
+                    '''
+                    asort=np.lexsort((edges, labels))
+                    slabels=labels[asort]
+                    sedges=edges[asort]
+                    '''
                     # map_l[np.unique(aa[0,:])]=range(len(np.unique(aa[0,:])))
-                    matrix_connection=csc_matrix((np.arange(len(ls)),(ls, cs)), shape=(ls.max()+1,cs.max()+1))
                     g_lines=np.tile(np.unique(adjs),len(np.unique(aa[1,:])))
                     g_cols=np.repeat(np.unique(aa[1,:]),len(np.unique(adjs)))
+
+                    matrix_connection=csc_matrix((np.arange(len(ls))+1,(ls, cs)), shape=(ls.max()+1,cs.max()+1))
+
+
                 else:
                     matrix_connection=[]
                     g_lines=np.tile(np.unique(adjs),len(external_gids))
-                    g_cols=np.repeat(external_gids,len(np.unique(adjs)))
+                    g_cols=np.repeat(np.sort(external_gids),len(np.unique(adjs)))
 
                 external_connections_out.append([g_lines, g_cols])
                 external_matrices.append([external_matrix, external_faces, external_gids, entity_up_ids, matrix_connection, np.unique(g_cols)])
@@ -116,7 +131,7 @@ def get_dual_and_primal_1(centroids):
 
     zp=np.array(mins[2]-1)
     zp=np.append(zp,(xd[2][:-1]+xd[2][1:])/2)
-    zp=np.append(zp,maxs[2]+1)    
+    zp=np.append(zp,maxs[2]+1)
     count=0
     for i in range(len(xp)-1):
         vx=volumes[(centroids[:,0]>=xp[i]) & (centroids[:,0]<xp[i+1])]
