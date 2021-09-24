@@ -8,6 +8,8 @@ visualize=FieldVisualizer()
 class NewtonIterationMultilevel:
     def __init__(self, wells, faces, volumes):
         self.GID_0=volumes['GID_0']
+        self.wells=wells
+        self.swns=np.zeros(len(self.GID_0))
         self.adjs=faces['adjacent_volumes']
         self.GID_1, self.DUAL_1 = get_dual_and_primal_1(volumes['centroids'])
         self.local_problems_structure, self.local_ID = get_local_problems_structure(self.DUAL_1, self.GID_1, faces['adjacent_volumes'])
@@ -22,7 +24,17 @@ class NewtonIterationMultilevel:
         return self.R, self.P
 
     def get_finescale_vols(self):
-        self.fs_vols=np.array([0,48,30,24,18])
+        swns=self.swns
+        ws_p=self.wells['ws_prod']
+        ws_i=self.wells['ws_inj']
+        adjs=self.adjs
+        deltas=abs(swns[adjs][:,0]-swns[adjs][:,1])
+        fs=np.arange(len(deltas))[deltas>0.05]
+        vols=adjs[fs].flatten()
+        vols=vols[swns[vols]<0.6]
+        fs_vs=np.unique(np.concatenate([ws_p, ws_i, vols]))
+        # import pdb; pdb.set_trace()
+        self.fs_vols=fs_vs
         # self.fs_vols=self.GID_0
 
 
@@ -153,10 +165,10 @@ class NewtonIterationMultilevel:
 
         self.NU_ADM_OP = sp.csc_matrix((data, (lines, cols)), shape=(lines.max()+1, cols.max()+1))
         # import pdb; pdb.set_trace()
-        visualize.plot_labels(self.OP[:,4].T.toarray()[0])
-        visualize.plot_labels(self.NU_ADM_OP[:,12].T.toarray()[0])
-        visualize.plot_labels(self.NU_ADM_ID)
-        import pdb; pdb.set_trace()
+        # visualize.plot_labels(self.OP[:,4].T.toarray()[0])
+        # visualize.plot_labels(self.NU_ADM_OP[:,12].T.toarray()[0])
+        # visualize.plot_labels(self.levels)
+        # import pdb; pdb.set_trace()
         cols = self.GID_0
         lines = self.NU_ADM_ID
         data = np.ones(len(lines))
@@ -186,6 +198,7 @@ class NewtonIterationMultilevel:
         dt=time_step
         while not converged:
             swns[self.Assembler.wells['ws_inj']]=1
+            self.swns=swns
             J, q=self.Assembler.get_jacobian_matrix(swns, swn1s, pressure, time_step)
             R, P = self.get_operators()
             sol=-P*sp.linalg.spsolve(R*J*P, R*q)
@@ -200,4 +213,9 @@ class NewtonIterationMultilevel:
                 print('excedded maximum number of iterations finescale')
                 return False, count, pressure, swns
         # saturation[wells['ws_prod']]=saturation[wells['viz_prod']].sum()/len(wells['viz_prod'])
+        na, nf=int(R.shape[0]/2), int(R.shape[1]/2)
+        OR_ADM=R[na:,nf:]
+        swns=OR_ADM.T*(OR_ADM*swns/np.array(OR_ADM.sum(axis=1)).T[0])
+        # import pdb; pdb.set_trace()
+        # swns=(Rs.T*(Rs*swns))#/Rs.sum(axis=0)
         return True, count, pressure, swns

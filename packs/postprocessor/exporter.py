@@ -8,7 +8,11 @@ class FieldVisualizer():
         self.grid=self.get_grid()
 
     def plot_labels(self, values):
-        self.grid.point_arrays["values"] = values.flatten().astype(np.float64)  # Flatten the array!
+        # self.grid.point_arrays["values"] = values.flatten().astype(np.float64)  # Flatten the array!
+        # grid = pv.StructuredGrid(x, y, z)
+        # Add scalars to the mesh and ravel with F order
+        self.grid['scalars'] = values.ravel(order='f')
+
         plotter = pv.Plotter()
         plotter.add_mesh(self.grid, show_edges=True, color="tan")
         points = self.grid.points
@@ -18,7 +22,8 @@ class FieldVisualizer():
 
 
     def plot_field(self, values):
-        self.grid.point_arrays["values"] = values.flatten().astype(np.float64)  # Flatten the array!
+        
+        self.grid.point_arrays["values"] = values#.flatten().astype(np.float64)  # Flatten the array!
         self.grid.plot(show_edges=True,cmap='jet')
 
     def plot_field_plt(self, values):
@@ -41,8 +46,8 @@ class FieldVisualizer():
 
     def get_grid(self):
         mesh = inputs['mesh_generation_parameters']
-        nb=np.array(mesh['n_blocks'])[[1,0,2]]
-        lb=np.array(mesh['block_size'])[[1,0,2]]
+        nb=np.array(mesh['n_blocks'])#[[1,0,2]]
+        lb=np.array(mesh['block_size'])#[[1,0,2]]
         sp=np.array([0,0,0])
 
         # values=np.arange(nb[0]*nb[1]*nb[2]).reshape(nb)

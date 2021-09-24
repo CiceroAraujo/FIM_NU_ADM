@@ -31,7 +31,7 @@ multilevel.update_NU_ADM_operators()
 # visualize.plot_field_plt(np.log10(volumes['Kxx']))
 # visualize.plot_field(np.log10(volumes['Kxx']))
 # visualize.plot_field
-visualize.plot_labels(multilevel.NU_ADM_OP[:,1].T.toarray()[0])
+# visualize.plot_labels(multilevel.NU_ADM_OP[:,1].T.toarray()[0])
 # visualize.plot_labels(ope[:,4].T.toarray()[0])
 
 # visualize.plot_labels(multilevel.NU_ADM_OP[:,0].T.toarray()[0])
@@ -41,7 +41,8 @@ visualize.plot_labels(multilevel.NU_ADM_OP[:,1].T.toarray()[0])
 # import pdb; pdb.set_trace()
 # visualize.plot_field(volumes['GID_0'])
 count=0
-plots=np.arange(0,100,10)
+plots=np.arange(0,1000,20)
+
 while True:
     conv=False
     while not conv:
@@ -57,5 +58,8 @@ while True:
     s=s1.copy()
     count+=1
     if count in plots:
+        # import pdb; pdb.set_trace()
+        visualize.plot_field(multilevel.levels)
+
         visualize.plot_field(s)
 # import pdb; pdb.set_trace()
