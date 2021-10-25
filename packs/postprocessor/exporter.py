@@ -14,7 +14,7 @@ class FieldVisualizer():
         self.grid['scalars'] = values.ravel(order='f')
 
         plotter = pv.Plotter()
-        plotter.add_mesh(self.grid, show_edges=True, color="tan")
+        plotter.add_mesh(self.grid, show_edges=False, color="tan")
         points = self.grid.points
         mask = points[:, 0] == 0
         plotter.add_point_labels(points, values.round(3).tolist(), point_size=20, font_size=15)
@@ -22,7 +22,7 @@ class FieldVisualizer():
 
 
     def plot_field(self, values):
-        
+
         self.grid.point_arrays["values"] = values#.flatten().astype(np.float64)  # Flatten the array!
         self.grid.plot(show_edges=True,cmap='jet')
 

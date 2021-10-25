@@ -9,7 +9,7 @@ class Assembler:
         self.adjs=faces['adjacent_volumes']
         self.Ts=faces['permeabilities']
         self.GID_0=volumes['GID_0']
-
+    
     def get_jacobian_matrix(self, Swns, Swn1s, p, time_step):
         # Ts, adjs, swns, swn1s, time_step, wells, F_Jacobian
         Ts=self.Ts
@@ -137,13 +137,11 @@ class Assembler:
         J=sp.csc_matrix((data,(lines,cols)),shape=(2*n,2*n))
         return(J, q)
 
+
     def apply_BC(self, lines, cols, data, q):
             n=int(len(q)/2)
             q[self.wells['ws_p']]=0
             q[self.wells['ws_inj']+n]=0
-            # import pdb; pdb.set_trace()
-            # if (wells['count']==0) and (len(wells['values_q'])>0):
-            #     q[wells['ws_q']]+=wells['values_q']
             for l in self.wells['ws_p']:
                 data[lines==l]=0
                 lines=np.append(lines,l)

@@ -4,6 +4,8 @@ from packs.processor.finescale_processing import NewtonIterationFinescale
 from packs.processor.multiscale_and_multilevel import NewtonIterationMultilevel
 import numpy as np
 from packs.postprocessor.exporter import FieldVisualizer
+import time
+
 visualize=FieldVisualizer()
 
 wells, faces, volumes = finescale_preprocess()
@@ -16,10 +18,11 @@ p[wells['ws_p']]=wells['values_p']
 s=p.copy()
 time_step=0.0005
 wells['count']=0
-
+'''
 multilevel.get_finescale_vols()
 multilevel.update_NU_ADM_mesh()
 multilevel.update_NU_ADM_operators()
+'''
 # import pdb; pdb.set_trace()
 # # visualize.plot_labels(multilevel.GID_1)
 # visualize.plot_labels(multilevel.NU_ADM_ID)
@@ -41,16 +44,23 @@ multilevel.update_NU_ADM_operators()
 # import pdb; pdb.set_trace()
 # visualize.plot_field(volumes['GID_0'])
 count=0
-plots=np.arange(0,1000,20)
+plots=np.arange(0,1000,30)
 
-while True:
+# while True:
+tadm=[]
+tfs=[]
+for i in range(1000):
     conv=False
     while not conv:
+        t0=time.time()
         conv, fs_iters, p1, s1=multilevel.newton_iteration_ADM(p, s , time_step)
+        t1=time.time()
         # conv, fs_iters, p1, s1=finescale.newton_iteration_finescale(p, s , time_step)
+        tadm.append(t1-t0)
+        # tfs.append(time.time()-t1)
         if fs_iters<5:
             print('increasing time_step from: {}, to: {}'.format(time_step, 1.5*time_step))
-            time_step*=1.5
+            time_step*=1.3
         elif fs_iters>15:
             print('reducing time_step from: {}, to: {}'.format(time_step, 0.8*time_step))
             time_step*=0.8
@@ -58,8 +68,7 @@ while True:
     s=s1.copy()
     count+=1
     if count in plots:
-        # import pdb; pdb.set_trace()
         visualize.plot_field(multilevel.levels)
-
         visualize.plot_field(s)
-# import pdb; pdb.set_trace()
+        visualize.plot_field(p)
+import pdb; pdb.set_trace()

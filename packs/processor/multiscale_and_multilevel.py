@@ -7,13 +7,19 @@ visualize=FieldVisualizer()
 
 class NewtonIterationMultilevel:
     def __init__(self, wells, faces, volumes):
+        self.alpha_lim=0.1
         self.GID_0=volumes['GID_0']
         self.wells=wells
         self.swns=np.zeros(len(self.GID_0))
         self.adjs=faces['adjacent_volumes']
         self.GID_1, self.DUAL_1 = get_dual_and_primal_1(volumes['centroids'])
         self.local_problems_structure, self.local_ID = get_local_problems_structure(self.DUAL_1, self.GID_1, faces['adjacent_volumes'])
-        self.OP = self.get_prolongation_operator(faces['permeabilities'])
+        self.OP, self.OP_matrix = self.get_prolongation_operator(faces['permeabilities'])
+        self.OR_matrix = sp.csc_matrix((np.ones_like(self.GID_0), (self.GID_1, self.GID_0)), shape=(int(self.GID_1.max()+1),int(self.GID_0.max()+1)))
+        self.beta_lim=3
+
+        self.get_beta_groups()
+
         self.Assembler = Assembler(wells, faces, volumes)
 
     def get_operators(self):
@@ -29,15 +35,58 @@ class NewtonIterationMultilevel:
         ws_i=self.wells['ws_inj']
         adjs=self.adjs
         deltas=abs(swns[adjs][:,0]-swns[adjs][:,1])
-        fs=np.arange(len(deltas))[deltas>0.05]
+        fs=np.arange(len(deltas))[deltas>0.01]
         vols=adjs[fs].flatten()
         vols=vols[swns[vols]<0.6]
-        fs_vs=np.unique(np.concatenate([ws_p, ws_i, vols]))
+        self.update_alpha()
+        alpha_vols=self.GID_0[self.alphas>self.alpha_lim]
+        fs_vs=np.unique(np.concatenate([ws_p, ws_i, vols, alpha_vols]))
+
+        bs=self.beta_ind[fs_vs]
+        binds=np.unique(bs[bs>-1])
+        if len(binds)>0:
+            bvols=np.concatenate(self.beta_groups[binds])
+            fs_vs=np.unique(np.concatenate([fs_vs,bvols]))
         # import pdb; pdb.set_trace()
         self.fs_vols=fs_vs
         # self.fs_vols=self.GID_0
+    @profile
+    def update_alpha(self):
+        np.set_printoptions(3)
+        nf=int(len(self.q)/2)
+        Jpp=self.J[0:nf,0:nf]
+        JP=Jpp*self.OP_matrix
+        RJP=self.OR_matrix*JP
+        self.GID_0
+        self.GID_1
+        # JP=JP.tocsr().tocsc()
+        l, c, d=sp.find(JP)
+        same=c==self.GID_1[l]
+        diag=RJP.diagonal()[self.GID_1]
+        lines=l[~same]
+        maxs=np.zeros(nf)
+        np.maximum.at(maxs,lines,d[~same])
+        self.alphas=maxs/diag
 
+    def get_beta_groups(self):
+        pos=self.GID_1[self.OP[0]]==self.OP[1]
+        phis=self.OP[2][pos][np.argsort(self.OP[0][pos])]
+        self.betas=(1-phis)/phis
+        beta_facs=self.betas[self.adjs].max(axis=1)
+        ads=self.adjs[beta_facs>self.beta_lim]
+        map=np.arange(self.adjs.max())
+        uads=np.unique(ads)
+        n=len(uads)
+        map[uads]=np.arange(n)
+        adjs=map[ads]
+        adjs=np.vstack([adjs,np.array([adjs[:,1],adjs[:,0]]).T])
+        graph = sp.csc_matrix((np.ones_like(adjs[:,0]), (adjs[:,0], adjs[:,1])),shape=(n,n))
+        n_l,labels=sp.csgraph.connected_components(graph)
+        self.beta_ind=-np.ones_like(self.GID_0)
+        self.beta_ind[uads]=labels
+        self.beta_groups=np.array([uads[labels==l] for l in range(n_l)])
 
+    # @profile
     def get_prolongation_operator(self, ts):
         i=-1
         ops = []
@@ -98,8 +147,9 @@ class NewtonIterationMultilevel:
         mapg[np.unique(gcols)]=np.arange(len(np.unique(gcols)))
         gcols=mapg[gcols]
         gdata=np.concatenate(gdata)
-        op=sp.csc_matrix((gdata, (glines, gcols)), shape=(glines.max()+1, gcols.max()+1))
-        return op
+        op=[glines, gcols, gdata]
+        OP_AMS=sp.csc_matrix((gdata, (glines, gcols)),shape=(int(glines.max()+1), int(gcols.max())+1))
+        return op, OP_AMS
 
     def update_NU_ADM_mesh(self):
         # self.fs_vols=fs_vols
@@ -143,8 +193,9 @@ class NewtonIterationMultilevel:
                 gid1[gid1==rgid]=self.NU_ADM_ID[self.vertices[self.GID_1[self.vertices]==rgid]]
         self.coarse_id_NU_ADM=gid1
 
+
     def update_NU_ADM_operators(self):
-        l, c, d=sp.find(self.OP)
+        l, c, d=self.OP
         coarse=self.levels[l]==1
         mapc = self.NU_ADM_ID[self.DUAL_1==3]
         lines = l[coarse]
@@ -163,7 +214,7 @@ class NewtonIterationMultilevel:
         cols = np.concatenate([cols, cs])
         data = np.concatenate([data, ds])
 
-        self.NU_ADM_OP = sp.csc_matrix((data, (lines, cols)), shape=(lines.max()+1, cols.max()+1))
+        self.NU_ADM_OP = [lines, cols, data]
         # import pdb; pdb.set_trace()
         # visualize.plot_labels(self.OP[:,4].T.toarray()[0])
         # visualize.plot_labels(self.NU_ADM_OP[:,12].T.toarray()[0])
@@ -172,12 +223,12 @@ class NewtonIterationMultilevel:
         cols = self.GID_0
         lines = self.NU_ADM_ID
         data = np.ones(len(lines))
-        self.NU_ADM_OR = sp.csc_matrix((data,(lines,cols)),shape=(lines.max()+1,cols.max()+1))
+        self.NU_ADM_OR = [lines,cols, data]
 
     def update_R_and_P(self):
-        lp, cp, dp = sp.find(self.NU_ADM_OP)
-        lr, cr, dr = sp.find(self.NU_ADM_OR)
-        n_f, n_ADM=self.NU_ADM_OP.shape
+        lp, cp, dp = self.NU_ADM_OP
+        lr, cr, dr = self.NU_ADM_OR
+        n_f, n_ADM=lp.max()+1, cp.max()+1
         lP=np.concatenate([lp, cr+n_f])
         cP=np.concatenate([cp, lr+n_ADM])
         dP=np.concatenate([dp, dr])
@@ -188,7 +239,7 @@ class NewtonIterationMultilevel:
 
         self.R=sp.csc_matrix((dR, (lR, cR)), shape=(2*n_ADM, 2*n_f))
         self.P=sp.csc_matrix((dP, (lP, cP)), shape=(2*n_f, 2*n_ADM))
-
+    # @profile
     def newton_iteration_ADM(self, p, s, time_step, rel_tol=1e-3):
         pressure = p.copy()
         swns = s.copy()
@@ -199,22 +250,22 @@ class NewtonIterationMultilevel:
         while not converged:
             swns[self.Assembler.wells['ws_inj']]=1
             self.swns=swns
-            J, q=self.Assembler.get_jacobian_matrix(swns, swn1s, pressure, time_step)
+            self.J, self.q=self.Assembler.get_jacobian_matrix(swns, swn1s, pressure, time_step)
             R, P = self.get_operators()
-            sol=-P*sp.linalg.spsolve(R*J*P, R*q)
-            n=int(len(q)/2)
+            sol=-P*sp.linalg.spsolve(R*self.J*P, R*self.q)
+            n=int(len(self.q)/2)
             pressure+=sol[0:n]
             swns+=sol[n:]
             swns[self.Assembler.wells['ws_inj']]=1
             converged=max(abs(sol[n:]))<rel_tol
-            print(max(abs(sol)),max(abs(sol)),'fs')
+            print(max(abs(sol)),'fs')
             count+=1
             if count>20:
                 print('excedded maximum number of iterations finescale')
                 return False, count, pressure, swns
         # saturation[wells['ws_prod']]=saturation[wells['viz_prod']].sum()/len(wells['viz_prod'])
-        na, nf=int(R.shape[0]/2), int(R.shape[1]/2)
-        OR_ADM=R[na:,nf:]
+        na, nf=int(self.R.shape[0]/2), int(self.R.shape[1]/2)
+        OR_ADM=self.R[na:,nf:]
         swns=OR_ADM.T*(OR_ADM*swns/np.array(OR_ADM.sum(axis=1)).T[0])
         # import pdb; pdb.set_trace()
         # swns=(Rs.T*(Rs*swns))#/Rs.sum(axis=0)

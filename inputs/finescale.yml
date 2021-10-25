@@ -1,5 +1,5 @@
 mesh_generation_parameters:
-  n_blocks: [60, 60, 60]
+  n_blocks: [60, 60, 1]
   block_size: [1, 1, 1]
   starting_point: [0, 0, 0]
 
@@ -15,7 +15,7 @@ rock_parameters:
 wells:
   P1:
     p0: [0.0, 0.0, 0.0]
-    p1: [1.0, 1.0, 85.0]
+    p1: [1.0, 1.0, 1.0]
     prescription: P
     type: Producer
     type_region: box
@@ -23,7 +23,7 @@ wells:
 
   P2:
     p0: [59.0, 59.0, 0.0]
-    p1: [60.0, 60.0, 85.0]
+    p1: [60.0, 60.0, 1.0]
     prescription: P
     type: Injector
     type_region: box
