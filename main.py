@@ -4,6 +4,7 @@ from packs.processor.finescale_processing import NewtonIterationFinescale
 from packs.processor.multiscale_and_multilevel import NewtonIterationMultilevel
 import numpy as np
 from packs.postprocessor.exporter import FieldVisualizer
+
 import time
 
 visualize=FieldVisualizer()
@@ -30,7 +31,7 @@ multilevel.update_NU_ADM_operators()
 # visualize.plot_labels(multilevel.GID_1)
 # visualize.plot_labels(multilevel.GID_0)
 # import pdb; pdb.set_trace()
-
+#
 # visualize.plot_field_plt(np.log10(volumes['Kxx']))
 # visualize.plot_field(np.log10(volumes['Kxx']))
 # visualize.plot_field
@@ -44,12 +45,13 @@ multilevel.update_NU_ADM_operators()
 # import pdb; pdb.set_trace()
 # visualize.plot_field(volumes['GID_0'])
 count=0
-plots=np.arange(0,1000,30)
+plots=np.arange(0,1000,10)
 
 # while True:
 tadm=[]
 tfs=[]
-for i in range(1000):
+
+for i in range(5):
     conv=False
     while not conv:
         t0=time.time()
@@ -57,7 +59,8 @@ for i in range(1000):
         t1=time.time()
         # conv, fs_iters, p1, s1=finescale.newton_iteration_finescale(p, s , time_step)
         tadm.append(t1-t0)
-        # tfs.append(time.time()-t1)
+        tfs.append(time.time()-t1)
+
         if fs_iters<5:
             print('increasing time_step from: {}, to: {}'.format(time_step, 1.5*time_step))
             time_step*=1.3
@@ -67,8 +70,11 @@ for i in range(1000):
     p=p1.copy()
     s=s1.copy()
     count+=1
-    if count in plots:
-        visualize.plot_field(multilevel.levels)
-        visualize.plot_field(s)
-        visualize.plot_field(p)
-import pdb; pdb.set_trace()
+
+np.save('results/times/proc_'+str(len(multilevel.GID_0))+'.npy',np.array(multilevel.proc_cumulative))
+np.save('results/times/prep_'+str(len(multilevel.GID_0))+'.npy',np.array(multilevel.prep_time))
+np.save('results/times/fs_'+str(len(multilevel.GID_0))+'.npy',np.array(finescale.time_solve))
+
+
+
+# import pdb; pdb.set_trace()

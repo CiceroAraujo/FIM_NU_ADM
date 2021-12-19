@@ -1,6 +1,7 @@
 from packs.preprocessor.symbolic_calculation import symbolic_J as s_J
 import scipy.sparse as sp
 import numpy as np
+import time
 
 class Assembler:
     def __init__(self, wells, faces, volumes):
@@ -9,7 +10,7 @@ class Assembler:
         self.adjs=faces['adjacent_volumes']
         self.Ts=faces['permeabilities']
         self.GID_0=volumes['GID_0']
-    
+
     def get_jacobian_matrix(self, Swns, Swn1s, p, time_step):
         # Ts, adjs, swns, swn1s, time_step, wells, F_Jacobian
         Ts=self.Ts
@@ -98,6 +99,15 @@ class Assembler:
         lines.append(id_j)
         cols.append(ID_vol)
         data.append(J00)
+        '''just for timing'''
+        t0=time.time()
+        l1=np.concatenate([ID_vol,id_j,ID_vol,id_j])
+        c1=np.concatenate([ID_vol,id_j,id_j,ID_vol])
+        d1=np.concatenate([-J00,-J00,J00,J00])
+        self.Jpp=sp.csr_matrix((d1,(l1,c1)),shape=(n,n))
+        self.time_Jpp=time.time()-t0
+        ''' end just for timing'''
+        # print(len(self.Jpp.data),'------------------')
         # J[ID_vol][id_j]+=J00
         lines.append(n+ID_vol)
         cols.append(ID_vol)

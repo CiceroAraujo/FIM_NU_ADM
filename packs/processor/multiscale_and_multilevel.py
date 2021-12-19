@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.sparse as sp
+import time
 from ..preprocessor.multiscale import get_dual_and_primal_1, get_local_problems_structure
 from .assembler import Assembler
 from packs.postprocessor.exporter import FieldVisualizer
@@ -7,25 +8,53 @@ visualize=FieldVisualizer()
 
 class NewtonIterationMultilevel:
     def __init__(self, wells, faces, volumes):
-        self.alpha_lim=0.1
+        self.alpha_lim=np.inf
         self.GID_0=volumes['GID_0']
         self.wells=wells
         self.swns=np.zeros(len(self.GID_0))
         self.adjs=faces['adjacent_volumes']
+        self.prep_time=[]
+        t0=time.time()
         self.GID_1, self.DUAL_1 = get_dual_and_primal_1(volumes['centroids'])
+        self.prep_time.append(time.time()-t0)#prep1
+        t0=time.time()
         self.local_problems_structure, self.local_ID = get_local_problems_structure(self.DUAL_1, self.GID_1, faces['adjacent_volumes'])
         self.OP, self.OP_matrix = self.get_prolongation_operator(faces['permeabilities'])
+        self.prep_time.append(time.time()-t0)#prep2
         self.OR_matrix = sp.csc_matrix((np.ones_like(self.GID_0), (self.GID_1, self.GID_0)), shape=(int(self.GID_1.max()+1),int(self.GID_0.max()+1)))
-        self.beta_lim=3
-
+        self.beta_lim=np.inf
         self.get_beta_groups()
-
         self.Assembler = Assembler(wells, faces, volumes)
+        self.proc_cumulative=[]
+        self.int_prim_flag=[]
+        self.PVI=[]
+
+    def dual_aglomerator(self):
+        t0=time.time()
+        JP=self.Assembler.Jpp*self.OP_matrix
+        RJP=self.OR_matrix*JP
+        self.prep_time.append(time.time()-t0)#prep3
+        l, c, d = sp.find(RJP)
+        off_diags=l!=c
+        l, c, d=l[off_diags], c[off_diags], d[off_diags]
+        diags=RJP.diagonal()
+        d=d/diags[l] #turns dd into neta
+        upper=l>c
+        d[upper][d[upper]<d[~upper]]=d[~upper][d[upper]<d[~upper]]
+        l1, c1, d1 = l[upper], c[upper], d[upper]
+        IJ=np.vstack([l1,c1])
+        neta_IJ=np.vstack([d1,np.zeros_like(d1)]).max(axis=0)
+
+
 
     def get_operators(self):
         self.get_finescale_vols()
+        t0=time.time()
         self.update_NU_ADM_mesh()
+        self.proc_temp.append(time.time()-t0) # time3
+        t0=time.time()
         self.update_NU_ADM_operators()
+        self.proc_temp.append(time.time()-t0) # time4
         self.update_R_and_P()
         return self.R, self.P
 
@@ -38,10 +67,11 @@ class NewtonIterationMultilevel:
         fs=np.arange(len(deltas))[deltas>0.01]
         vols=adjs[fs].flatten()
         vols=vols[swns[vols]<0.6]
+        t0=time.time()
         self.update_alpha()
+        self.proc_temp.append((time.time()-t0)/10)#time1
         alpha_vols=self.GID_0[self.alphas>self.alpha_lim]
         fs_vs=np.unique(np.concatenate([ws_p, ws_i, vols, alpha_vols]))
-
         bs=self.beta_ind[fs_vs]
         binds=np.unique(bs[bs>-1])
         if len(binds)>0:
@@ -50,9 +80,9 @@ class NewtonIterationMultilevel:
         # import pdb; pdb.set_trace()
         self.fs_vols=fs_vs
         # self.fs_vols=self.GID_0
-    @profile
-    def update_alpha(self):
-        np.set_printoptions(3)
+    # @profile
+    def update_alpha_stabls(self):
+        np.set_printoptions(5)
         nf=int(len(self.q)/2)
         Jpp=self.J[0:nf,0:nf]
         JP=Jpp*self.OP_matrix
@@ -66,13 +96,34 @@ class NewtonIterationMultilevel:
         lines=l[~same]
         maxs=np.zeros(nf)
         np.maximum.at(maxs,lines,d[~same])
-        self.alphas=maxs/diag
+        # import pdb; pdb.set_trace()
+        self.alphas=maxs/abs(diag)
+    @ profile
+    def update_alpha(self):
+        np.set_printoptions(5)
+        nf=int(len(self.q)/2)
+        if self.swns.sum()==1:
+            l, c, _ =sp.find(self.OP_matrix)
+            ad1s=self.GID_1[self.adjs]
+            self.bound_prim=np.repeat(False,len(self.GID_1))
+            self.bound_prim[ad1s[ad1s[:,0]!=ad1s[:,1]]]=True
+            self.int_prim_flag=c==self.GID_1[l] | self.bound_prim[l]
+            self.OP_matrix.data[self.int_prim_flag]=0
+            t0=time.time()
+            self.dual_aglomerator()
+            self.prep_time.append(time.time()-t0)#prep4
 
+        JP=self.Assembler.Jpp*self.OP_matrix
+        RJP=self.OR_matrix*JP
+        diag=RJP.diagonal()[self.GID_1]
+        self.alphas=JP.max(axis=1).toarray().T[0]/abs(diag)
+        # import pdb; pdb.set_trace()
     def get_beta_groups(self):
         pos=self.GID_1[self.OP[0]]==self.OP[1]
         phis=self.OP[2][pos][np.argsort(self.OP[0][pos])]
         self.betas=(1-phis)/phis
         beta_facs=self.betas[self.adjs].max(axis=1)
+
         ads=self.adjs[beta_facs>self.beta_lim]
         map=np.arange(self.adjs.max())
         uads=np.unique(ads)
@@ -248,15 +299,23 @@ class NewtonIterationMultilevel:
         count=0
         dt=time_step
         while not converged:
+            self.proc_temp=[]
             swns[self.Assembler.wells['ws_inj']]=1
             self.swns=swns
+
             self.J, self.q=self.Assembler.get_jacobian_matrix(swns, swn1s, pressure, time_step)
+
+            self.proc_temp.append(self.Assembler.time_Jpp) #prep_time1
             R, P = self.get_operators()
+            t0=time.time()
             sol=-P*sp.linalg.spsolve(R*self.J*P, R*self.q)
+            self.proc_temp.append(time.time()-t0) #time5
+            self.proc_cumulative.append(self.proc_temp)
             n=int(len(self.q)/2)
             pressure+=sol[0:n]
             swns+=sol[n:]
             swns[self.Assembler.wells['ws_inj']]=1
+            self.PVI.append(swns.sum()*0.3/len(swns))
             converged=max(abs(sol[n:]))<rel_tol
             print(max(abs(sol)),'fs')
             count+=1

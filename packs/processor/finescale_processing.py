@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.sparse as sp
+import time
 from scipy.sparse import linalg
 from ..postprocessor.exporter import FieldVisualizer
 from .assembler import Assembler
@@ -8,6 +9,7 @@ visualize=FieldVisualizer()
 class NewtonIterationFinescale():
     def __init__(self, wells, faces, volumes):
         self.Assembler = Assembler(wells, faces, volumes)
+        self.time_solve=[]
 
     # @profile
     def newton_iteration_finescale(self, p, s, time_step, rel_tol=1e-3):
@@ -17,13 +19,12 @@ class NewtonIterationFinescale():
         converged=False
         count=0
         dt=time_step
-        # data_impress['swn1s']=data_impress['swns'].copy()
-        # all_ids=GID_0
-        # not_prod=np.setdiff1d(all_ids,wells['all_wells'])
         while not converged:
             swns[self.Assembler.wells['ws_inj']]=1
             J, q=self.Assembler.get_jacobian_matrix(swns, swn1s, pressure, time_step)
+            t0=time.time()
             sol=-linalg.spsolve(J, q)
+            self.time_solve.append(time.time()-t0)
             n=int(len(q)/2)
             pressure+=sol[0:n]
             swns+=sol[n:]
