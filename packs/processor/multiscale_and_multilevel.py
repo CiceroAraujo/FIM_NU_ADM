@@ -8,6 +8,7 @@ visualize=FieldVisualizer()
 
 class NewtonIterationMultilevel:
     def __init__(self, wells, faces, volumes):
+        self.PVI=0
         self.alpha_lim=np.inf
         self.GID_0=volumes['GID_0']
         self.wells=wells
@@ -313,14 +314,19 @@ class NewtonIterationMultilevel:
             self.proc_cumulative.append(self.proc_temp)
             n=int(len(self.q)/2)
             pressure+=sol[0:n]
+            sol[n+self.wells['ws_prod']]=0
             swns+=sol[n:]
             swns[self.Assembler.wells['ws_inj']]=1
-            self.PVI.append(swns.sum()*0.3/len(swns))
+            # swns[self.Assembler.wells['ws_prod']]=0
+            self.PVI=swns.sum()*0.3/len(swns)
+            # posics=np.arange(len(swns))
+            # posics=posics[posics!=
             converged=max(abs(sol[n:]))<rel_tol
             print(max(abs(sol)),'fs')
             count+=1
             if count>20:
                 print('excedded maximum number of iterations finescale')
+                import pdb; pdb.set_trace()
                 return False, count, pressure, swns
         # saturation[wells['ws_prod']]=saturation[wells['viz_prod']].sum()/len(wells['viz_prod'])
         na, nf=int(self.R.shape[0]/2), int(self.R.shape[1]/2)

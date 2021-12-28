@@ -1,5 +1,5 @@
 mesh_generation_parameters:
-  n_blocks: [500, 500, 1]
+  n_blocks: [60, 220, 1]
   block_size: [1, 1, 1]
   starting_point: [0, 0, 0]
 
@@ -22,8 +22,8 @@ wells:
     value: 0.0
 
   P2:
-    p0: [499.0, 499.0, 0.0]
-    p1: [500.0, 500.0, 1.0]
+    p0: [59.0, 219.0, 0.0]
+    p1: [60.0, 220.0, 1.0]
     prescription: P
     type: Injector
     type_region: box
@@ -37,8 +37,8 @@ fluid_properties:
   gama_w: 1000.0
   kro0: 1.0
   krw0: 1.0
-  loop_maximo: null
-  loops_para_gravar: 2
+  loop_maximo: nu46
+  loops_para_gra447: 2
   mi_o: 0.01
   mi_w: 0.01
   n_o: 2.0

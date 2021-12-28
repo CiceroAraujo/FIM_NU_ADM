@@ -32,6 +32,7 @@ class NewtonIterationFinescale():
             swns[self.Assembler.wells['ws_inj']]=1
             converged=max(abs(sol[n:]))<rel_tol
             print(max(abs(sol)),max(abs(sol)),'fs')
+            self.PVI=swns.sum()*0.3/len(swns)
             count+=1
             if count>20:
                 print('excedded maximum number of iterations finescale')

@@ -50,14 +50,16 @@ plots=np.arange(0,1000,10)
 # while True:
 tadm=[]
 tfs=[]
-
-for i in range(5):
+converged=False
+time_steps=[]
+while not converged:
     conv=False
     while not conv:
         t0=time.time()
-        conv, fs_iters, p1, s1=multilevel.newton_iteration_ADM(p, s , time_step)
+        # conv, fs_iters, p1, s1=multilevel.newton_iteration_ADM(p, s , time_step)
+        time_steps.append(time_step)
         t1=time.time()
-        # conv, fs_iters, p1, s1=finescale.newton_iteration_finescale(p, s , time_step)
+        conv, fs_iters, p1, s1=finescale.newton_iteration_finescale(p, s , time_step)
         tadm.append(t1-t0)
         tfs.append(time.time()-t1)
 
@@ -67,13 +69,25 @@ for i in range(5):
         elif fs_iters>15:
             print('reducing time_step from: {}, to: {}'.format(time_step, 0.8*time_step))
             time_step*=0.8
+
+        try:
+            if multilevel.PVI>0.15:
+                converged=True
+            print(multilevel.PVI,"PVI")
+        except:
+            if finescale.PVI>0.15:
+                converged=True
+            print(finescale.PVI,"PVI")
+
+
     p=p1.copy()
     s=s1.copy()
     count+=1
 
-np.save('results/times/proc_'+str(len(multilevel.GID_0))+'.npy',np.array(multilevel.proc_cumulative))
-np.save('results/times/prep_'+str(len(multilevel.GID_0))+'.npy',np.array(multilevel.prep_time))
-np.save('results/times/fs_'+str(len(multilevel.GID_0))+'.npy',np.array(finescale.time_solve))
+# np.save('results/time_steps.npy',np.array(time_steps))
+# np.save('results/times/proc_'+str(len(multilevel.GID_0))+'.npy',np.array(multilevel.proc_cumulative))
+# np.save('results/times/prep_'+str(len(multilevel.GID_0))+'.npy',np.array(multilevel.prep_time))
+# np.save('results/times/fs_'+str(len(multilevel.GID_0))+'.npy',np.array(finescale.time_solve))
 
 
 
