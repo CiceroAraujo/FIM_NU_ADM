@@ -13,6 +13,52 @@ class Timer:
         self.lw=3
         self.var=var
         self.get_cases()
+        # self.get_data()
+
+    def get_data(self):
+        plt.close('all')
+        var=self.var
+        all_ords=[]
+        times_ms=[]
+        times_ms_nu=[]
+        times_fs=[]
+        self.table_data={}
+        for case in self.cases:
+            fs_times=var['fs_'+case]*0.8/0.15
+            ms_prep=var['prep_'+case][:-1]
+            ms_proc=var['proc_'+case][:-1]*0.8/0.15
+
+            n1_adm=np.load('results/n1_adm.npy')[:-1]
+            ms_solve=np.interp(np.linspace(0,len(n1_adm),len(ms_proc)),np.arange(len(n1_adm)),n1_adm)
+            tsolve=(0.8/0.15)*0.0000045*(ms_solve*int(case)/(100))**1.997/len(fs_times)
+            ms_proc[:,4]=tsolve
+
+            ms_prep=np.concatenate([ms_prep,np.array([0.07*ms_prep[2],0.0009*ms_prep[0],0.01*ms_prep[0],0.27*ms_prep[1]])])
+            t1=np.array([np.linspace(0,0.1*ms_prep[1],len(ms_proc))]).T #recumpute velocity
+            t2=np.array([0.007*ms_proc[:,1]]).T #update_sat
+            ms_proc=np.hstack([ms_proc,t1,t2])
+            t3=ms_proc[:,0] #construct finescale system
+
+            try:
+                fs_times=np.vstack([t3[0:len(fs_times)],fs_times,t2.T[0][0:len(fs_times)]]).T
+            except:
+                pass
+
+            n1_adm=np.load('results/n1_adm.npy')[:-1]
+            ms_solve=np.interp(np.linspace(0,len(n1_adm),len(ms_proc)),np.arange(len(n1_adm)),n1_adm)
+            tsolve=(0.8/0.15)*0.0000045*(ms_solve*int(case)/(100))**1.997/len(fs_times)
+            ms_proc[:,4]=tsolve
+            ###################
+            # self.table_data[case]=[ms_prep,ms_proc.sum(axis=0),fs_times.sum(axis=0)]
+            times_ms.append(ms_prep.sum()+ms_proc.sum())
+            #################
+            n1_adm=np.load('results/n1_adm_nuadm.npy')[:-1]
+            ms_solve=np.interp(np.linspace(0,len(n1_adm),len(ms_proc)),np.arange(len(n1_adm)),n1_adm)
+            tsolve=(0.8/0.15)*0.0001028*(ms_solve*int(case)/(100))**1.648/len(fs_times)
+            ms_proc[:,4]=tsolve
+            ###################
+            self.table_data[case]=[ms_prep,ms_proc.sum(axis=0),fs_times.sum(axis=0)]
+
 
     def export_table(self):
         plt.close('all')
@@ -40,7 +86,6 @@ class Timer:
             tc2=[]
             for t in tc:
                 if t in tc[ind_p]:
-
                     tc2.append((t+'0000')[0:5]+'%')
                 else:
                     tc2.append((t+'0000')[0:5])
@@ -76,10 +121,10 @@ class Timer:
             ms_prep=var['prep_'+case][:-1]
             ms_proc=var['proc_'+case][:-1]*0.8/0.15
             #################
-            n1_adm=np.load('results/n1_adm.npy')[:-1]
-            ms_solve=np.interp(np.linspace(0,len(n1_adm),len(ms_proc)),np.arange(len(n1_adm)),n1_adm)
-            tsolve=(0.8/0.15)*0.0000045*(ms_solve*int(case)/(100))**1.997/len(fs_times)
-            ms_proc[:,4]=tsolve
+            n1_adm1=np.load('results/n1_adm.npy')[:-1]
+            ms_solve1=np.interp(np.linspace(0,len(n1_adm1),len(ms_proc)),np.arange(len(n1_adm1)),n1_adm1)
+            tsolve1=0.0000045*(ms_solve1*int(case)/(100))**1.997/len(fs_times)
+            ms_proc[:,4]=tsolve1
             ###################
             ms_prep=np.concatenate([ms_prep,np.array([0.07*ms_prep[2],0.0009*ms_prep[0],0.01*ms_prep[0],0.27*ms_prep[1]])])
             t1=np.array([np.linspace(0,0.1*ms_prep[1],len(ms_proc))]).T #recumpute velocity
@@ -89,10 +134,11 @@ class Timer:
             #################
             n1_adm=np.load('results/n1_adm_nuadm.npy')[:-1]
             ms_solve=np.interp(np.linspace(0,len(n1_adm),len(ms_proc)),np.arange(len(n1_adm)),n1_adm)
-            tsolve=(0.8/0.15)*0.0000045*(ms_solve*int(case)/(100))**1.997/len(fs_times)
+            tsolve=0.0000045*(ms_solve*int(case)/(100))**1.997/len(fs_times)
             ms_proc[:,4]=tsolve
             ###################
             cum_ms_nu=ms_prep.sum()+np.cumsum(ms_proc.sum(axis=1))
+            # import pdb; pdb.set_trace()
             t3=ms_proc[:,0] #construct finescale system
             try:
                 fs_times=np.vstack([t3[0:len(fs_times)],fs_times,t2.T[0][0:len(fs_times)]]).T
@@ -117,13 +163,13 @@ class Timer:
 
             plt.plot(ms_vpi,cum_ms,label='ADM & A-AMS',lw=self.lw)
             plt.plot(ms_vpi,cum_ms_nu,label='NU-ADM  & A-AMS',lw=self.lw)
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             try:
                 plt.plot(fs_vpi,cum_fs,label='reference', lw=self.lw)
             except:
                 import pdb; pdb.set_trace()
             plt.yscale('log')
-
+            # import pdb; pdb.set_trace()
         self.format_plot(np.unique(np.concatenate(all_ords)))
         plt.legend()
         plt.xlabel('PVI [%]', fontsize=60)
@@ -143,7 +189,6 @@ class Timer:
             fs_times=var['fs_'+case]*0.8/0.15
             ms_prep=var['prep_'+case][:-1]
             ms_proc=var['proc_'+case][:-1]*0.8/0.15
-
             #################
             n1_adm=np.load('results/n1_adm.npy')[:-1]
             ms_solve=np.interp(np.linspace(0,len(n1_adm),len(ms_proc)),np.arange(len(n1_adm)),n1_adm)
@@ -155,13 +200,10 @@ class Timer:
             t2=np.array([0.007*ms_proc[:,1]]).T #update_sat
             ms_proc=np.hstack([ms_proc,t1,t2])
             t3=ms_proc[:,0] #construct finescale system
-            # n1_adm=np.load('results/n1_adm.npy')[:]
-            # import pdb; pdb.set_trace()
             try:
                 fs_times=np.vstack([t3[0:len(fs_times)],fs_times,t2.T[0][0:len(fs_times)]]).T
             except:
                 pass
-
             #################
             n1_adm=np.load('results/n1_adm.npy')[:-1]
             ms_solve=np.interp(np.linspace(0,len(n1_adm),len(ms_proc)),np.arange(len(n1_adm)),n1_adm)
@@ -177,26 +219,18 @@ class Timer:
             ms_proc[:,4]=tsolve
             ###################
             self.table_data[case]=[ms_prep,ms_proc.sum(axis=0),fs_times.sum(axis=0)]
-
             times_ms_nu.append(ms_prep.sum()+ms_proc.sum())
-            alpha=1
-            if case=='3300':
-                alpha=1.3
-            if case=='6600':
-                alpha=1.0
-            if case=='26400':
-                # import pdb; pdb.set_trace()
-                alpha=0.6
-            if case=='52800':
-                alpha=0.5
-            alpha=1
+
+            alpha=1.0
             times_fs.append(fs_times.sum()*alpha)
         cases=self.cases.astype(int)
+
         times_ms, times_fs, times_ms_nu=np.array(times_ms), np.array(times_fs),np.array(times_ms_nu)
 
         inds=np.argsort(cases)
         cases=cases[inds]
         times_ms, times_fs, times_ms_nu=times_ms[inds], times_fs[inds],times_ms_nu[inds]
+
         pos=times_fs>0
 
         plt.scatter(cases[pos],times_fs[pos],label='reference ', lw=3*self.lw)
@@ -232,7 +266,7 @@ class Timer:
         plt.savefig('results/final.svg', bbox_inches='tight', transparent=True)
         # import pdb; pdb.set_trace()
         # vals=np.array(self.prep_time)
-        # lines=
+
         # import pdb; pdb.set_trace()
 
 

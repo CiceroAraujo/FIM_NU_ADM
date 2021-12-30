@@ -1,4 +1,4 @@
-from packs.postprocessor.timer import Timer, organize_results
+from packs.postprocessor.timer2 import Timer, organize_results
 
 var=organize_results()
 timer=Timer(var)
