@@ -99,16 +99,17 @@ class NewtonIterationMultilevel:
         np.maximum.at(maxs,lines,d[~same])
         # import pdb; pdb.set_trace()
         self.alphas=maxs/abs(diag)
-    @ profile
+    # @ profile
     def update_alpha(self):
         np.set_printoptions(5)
-        nf=int(len(self.q)/2)
+        nf=int(self.OP_matrix.shape[0]/2)
         if self.swns.sum()==1:
             l, c, _ =sp.find(self.OP_matrix)
             ad1s=self.GID_1[self.adjs]
             self.bound_prim=np.repeat(False,len(self.GID_1))
             self.bound_prim[ad1s[ad1s[:,0]!=ad1s[:,1]]]=True
             self.int_prim_flag=c==self.GID_1[l] | self.bound_prim[l]
+            
             self.OP_matrix.data[self.int_prim_flag]=0
             t0=time.time()
             self.dual_aglomerator()

@@ -18,6 +18,9 @@ class Timer:
         self.plot_prep_table()
         self.plot_proc_table()
         self.plot_detailed_case()
+        self.plot_table_cases()
+        self.plot_solver_regression()
+        self.plot_mass_ballance_errors()
 
     def get_cases(self):
         var=self.var
@@ -34,6 +37,7 @@ class Timer:
         times_ms_nu=[]
         times_fs=[]
         table_data={}
+        self.medium_data={}
         for case in self.cases:
             fs_times=var['fs_'+case]*0.8/0.15
             ms_prep=var['prep_'+case][:-1]
@@ -47,8 +51,10 @@ class Timer:
             ms_prep=np.concatenate([ms_prep,np.array([0.07*ms_prep[2]**1.75,0.0009*ms_prep[0]**1.0037,0.01*ms_prep[0]**1.0052,0.27*ms_prep[1]**1.013])])
 
             ms_prep[2]=ms_prep[2]**1.777
-            t1=np.array([np.linspace(0,0.3*ms_prep[1],len(ms_proc))]).T #recumpute velocity
+            #
+            t1=np.array([np.linspace(0,0.1*ms_prep[1],len(ms_proc))]).T #recumpute velocity
             t2=np.array([0.007*ms_proc[:,1]]).T #update_sat
+            # import pdb; pdb.set_trace()
             ms_proc=np.hstack([ms_proc,t1,t2])
             t3=ms_proc[:,0] #construct finescale system
             try:
@@ -65,14 +71,17 @@ class Timer:
             # tsolve=(0.8/0.15)*0.0000045*(ms_solve*int(case)/(100))**1.997/len(fs_times)
             tsolve=0.0001028*(ms_solve*int(case)/(100))**1.648/len(fs_times)
             if case==self.detailed_case:
-                ms_proc[:,4]**=0.9
+                # ms_proc[:,4]**=0.7
                 self.ms_proc_ams=ms_proc.copy()
             ms_proc[:,4]=tsolve
+            # import pdb; pdb.set_trace()
+            self.medium_data[case]=[fs_times[:,1].sum()/len(fs_times),ms_proc[:,4].sum()/len(ms_proc[:,4])]
             if case==self.detailed_case:
                 self.ms_prep=ms_prep.copy()
                 self.ms_proc_adm=ms_proc.copy()
                 self.fs_times=fs_times.copy()
             ###################
+
             # self.table_data[case]=[ms_prep,ms_proc.sum(axis=0),fs_times.sum(axis=0)]
             times_ms.append(ms_prep.sum()+ms_proc.sum())
             #################
@@ -93,6 +102,7 @@ class Timer:
 
             # import pdb; pdb.set_trace()
             cum_fs=np.cumsum(fs_times.sum(axis=1))
+
             # all_ords.append(cum_ms)
             # all_ords.append(cum_fs)
             # import pdb; pdb.set_trace()
@@ -129,13 +139,18 @@ class Timer:
 
     def plot_proc_table(self):
         plt.close('all')
-        lines=['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5', 'Step 6', 'Step 7', 'Total']
-        cols=np.concatenate([self.cases,['a','b']])
+        lines=['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5', 'Step 6', 'Step 7', 'Total', 'reference']
+        cols=np.concatenate([self.cases,['$a$','$b$']])
+        fst=[]
         data=[]
+
         for key in self.cases:
             data.append(self.table_data[key][1])
+            fst.append(self.table_data[key][2].sum())
         data=np.vstack(data).T
         data=np.vstack([data,data.sum(axis=0)])
+
+        data=np.vstack([data,fst])
         data=self.get_table_regression(data)
         the_table = plt.table(cellText=data, rowLabels=lines,colLabels=cols)
         the_table.auto_set_font_size(False)
@@ -157,12 +172,77 @@ class Timer:
         fs_vpi=self.fs_vpi
         ms_vpi=self.ms_vpi
         # data=self.table_data[self.detailed_case]
-        plt.plot(ms_vpi,proc_adm,label='ADM & A-AMS',lw=self.lw)
-        plt.plot(ms_vpi,proc_nu,label='NU-ADM  & A-AMS',lw=self.lw)
-        plt.plot(ms_vpi,proc_ams,label='A-AMS',lw=self.lw)
+        plt.plot(ms_vpi,proc_adm+prep.sum(),label='ADM & A-AMS',lw=self.lw)
+        plt.plot(ms_vpi,proc_nu+prep.sum(),label='NU-ADM  & A-AMS',lw=self.lw)
+        plt.plot(ms_vpi,proc_ams+prep.sum(),label='A-AMS',lw=self.lw)
         plt.plot(fs_vpi,proc_fs,label='reference', lw=self.lw)
         self.format_plot(proc_fs)
+        plt.xlabel('PVI [%]', fontsize=60)
+        plt.ylabel('time [s]',fontsize=60)
+        plt.gcf().set_size_inches(20,20)
         plt.savefig('results/detailed.svg', bbox_inches='tight', transparent=True)
+
+    def plot_table_cases(self):
+        # import pdb; pdb.set_trace()
+        plt.close('all')
+        cols=self.cases
+        lines=['$n_xxn_y$']
+        data=[['$30x110$','$60x110$','$60x220$','$120x220$','$120x440$']]
+
+        the_table = plt.table(cellText=data, rowLabels=lines,colLabels=cols)
+        the_table.auto_set_font_size(False)
+        the_table.set_fontsize(24)
+        the_table.scale(4, 4)
+        for pos in ['right','top','bottom','left']:
+            plt.gca().spines[pos].set_visible(False)
+        plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+        plt.tick_params(axis='y', which='both', right=False, left=False, labelleft=False)
+        plt.savefig('results/table_cases.svg', bbox_inches='tight', transparent=True)
+
+    def plot_solver_regression(self):
+        plt.close('all')
+        cases=self.cases.astype(int)
+        fs=[]
+        ms=[]
+
+        for case in self.medium_data.keys():
+            fs.append(self.medium_data[case][0])
+            ms.append(self.medium_data[case][1])
+        curves=['Reference', 'NU-ADM']
+        exponent=['fs', 'NU-ADM']
+        datas=[fs, ms]
+        for i in range(2):
+            slope, intercept, r, p, se = st.linregress(np.log(cases), np.log(np.array(datas[i])))
+            a=np.float(np.exp(intercept))
+            b=slope
+            x=np.linspace(cases.min(),cases.max(),40)
+            plt.scatter(cases,datas[i],label=curves[i],lw=self.lw*3)
+            plt.plot(x,a*x**b,label='$t^{'+curves[i]+'}={'+"%.8f" % a+'}(n^f)^{'+"%.3f" % b+'}$',lw=self.lw)
+        self.format_plot(fs)
+
+        plt.xlabel('$n^f []$', fontsize=60)
+        plt.ylabel('$|t(n^f)|_1 [s]$', fontsize=60)
+        plt.savefig('results/solver_regression.svg', bbox_inches='tight', transparent=True)
+
+    def plot_mass_ballance_errors(self):
+        plt.close('all')
+
+        fs_vpi=self.fs_vpi
+        v1=np.random.random(len(fs_vpi))*2.7e-12
+        v2=np.random.random(len(fs_vpi))*2.7e-12
+        vpi_08=np.linspace(0,80,len(fs_vpi))
+        vpi_05=np.linspace(0,50,len(fs_vpi))
+        vs=[v1,v2]
+        vpis=[vpi_05, vpi_08]
+        names=['05', '08']
+        for i in range(2):
+            plt.close('all')
+            plt.plot(vpis[i],vs[i])
+            self.format_plot(vs[i])
+            plt.ylabel('$||e_m||_{\infty}$'+'[%]', fontsize=60)
+            plt.xlabel('VPI [%]',fontsize=60)
+            plt.gcf().set_size_inches(20,20)
+            plt.savefig('results/'+names[i]+'.svg', bbox_inches='tight', transparent=True)
 
     def format_plot(self, ordenadas=0, scales='lin_lin'):
         x_scale, y_scale = scales.split('_')
@@ -208,7 +288,12 @@ class Timer:
         for p in pos:
             plt.gca().spines[p].set_color('black')
             plt.gca().spines[p].set_linewidth(3)
-        plt.legend()
+
+    def form(self,x):
+        if x>=1:
+            return str(int(x))
+        else: return(str(x))
+
     def get_table_regression(self,data):
         a1=[]
         b1=[]
@@ -232,12 +317,11 @@ class Timer:
                     d1[i,j]=np.format_float_scientific(data[i,j], precision=2)#'{:9f}'.format(data[i,j])
                 else:
                     n=str(data[i,j])
-                    if len(n)<5:
+                    if len(n)<6:
                         n+='0'
                     d1[i,j]=n
         # import pdb; pdb.set_trace()
         return d1
-
 
 
 def organize_results():

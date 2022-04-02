@@ -35,7 +35,8 @@ multilevel.update_NU_ADM_operators()
 # visualize.plot_field_plt(np.log10(volumes['Kxx']))
 # visualize.plot_field(np.log10(volumes['Kxx']))
 # visualize.plot_field
-# visualize.plot_labels(multilevel.NU_ADM_OP[:,1].T.toarray()[0])
+
+# visualize.plot_labels(multilevel.OP_matrix[:,1].T.toarray()[0])
 # visualize.plot_labels(ope[:,4].T.toarray()[0])
 
 # visualize.plot_labels(multilevel.NU_ADM_OP[:,0].T.toarray()[0])
@@ -56,13 +57,14 @@ while not converged:
     conv=False
     while not conv:
         t0=time.time()
-        # conv, fs_iters, p1, s1=multilevel.newton_iteration_ADM(p, s , time_step)
+        conv, fs_iters, p1, s1=multilevel.newton_iteration_ADM(p, s , time_step)
         time_steps.append(time_step)
         t1=time.time()
-        conv, fs_iters, p1, s1=finescale.newton_iteration_finescale(p, s , time_step)
+        # conv, fs_iters, p1, s1=finescale.newton_iteration_finescale(p, s , time_step)
         tadm.append(t1-t0)
         tfs.append(time.time()-t1)
-
+        if count in plots:
+            visualize.plot_field(s)
         if fs_iters<5:
             print('increasing time_step from: {}, to: {}'.format(time_step, 1.5*time_step))
             time_step*=1.3

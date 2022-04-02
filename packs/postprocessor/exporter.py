@@ -22,7 +22,6 @@ class FieldVisualizer():
 
 
     def plot_field(self, values):
-
         self.grid.point_arrays["values"] = values#.flatten().astype(np.float64)  # Flatten the array!
         self.grid.plot(show_edges=True,cmap='jet')
 
@@ -46,7 +45,7 @@ class FieldVisualizer():
 
     def get_grid(self):
         mesh = inputs['mesh_generation_parameters']
-        nb=np.array(mesh['n_blocks'])#[[1,0,2]]
+        nb=np.array(mesh['n_blocks'])[[1,0,2]]
         lb=np.array(mesh['block_size'])#[[1,0,2]]
         sp=np.array([0,0,0])
 
