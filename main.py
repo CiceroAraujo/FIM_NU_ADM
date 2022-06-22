@@ -64,7 +64,9 @@ while not converged:
         tadm.append(t1-t0)
         tfs.append(time.time()-t1)
         if count in plots:
-            visualize.plot_field(s)
+            visualize.plot_field_plt(p1)
+            visualize.plot_field_plt(s1)
+            visualize.plot_field_plt(multilevel.levels)
         if fs_iters<5:
             print('increasing time_step from: {}, to: {}'.format(time_step, 1.5*time_step))
             time_step*=1.3
@@ -72,14 +74,14 @@ while not converged:
             print('reducing time_step from: {}, to: {}'.format(time_step, 0.8*time_step))
             time_step*=0.8
 
-        try:
-            if multilevel.PVI>0.15:
-                converged=True
-            print(multilevel.PVI,"PVI")
-        except:
-            if finescale.PVI>0.15:
-                converged=True
-            print(finescale.PVI,"PVI")
+        # try:
+        #     if multilevel.PVI>0.15:
+        #         converged=True
+        #     print(multilevel.PVI,"PVI")
+        # except:
+        #     if finescale.PVI>0.15:
+        #         converged=True
+        #     print(finescale.PVI,"PVI")
 
 
     p=p1.copy()

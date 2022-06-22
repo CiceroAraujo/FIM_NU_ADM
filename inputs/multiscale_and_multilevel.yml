@@ -1,5 +1,5 @@
 multiscale:
-  coarsening_ratio_1: [9, 9, 1]
+  coarsening_ratio_1: [5,5, 1]
   neta_lim: 1.0
 
 multilevel:

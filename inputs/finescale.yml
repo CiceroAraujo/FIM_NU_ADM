@@ -1,5 +1,5 @@
 mesh_generation_parameters:
-  n_blocks: [60, 220, 1]
+  n_blocks: [20, 20, 1]
   block_size: [1, 1, 1]
   starting_point: [0, 0, 0]
 
@@ -22,8 +22,8 @@ wells:
     value: 0.0
 
   P2:
-    p0: [59.0, 219.0, 0.0]
-    p1: [60.0, 220.0, 1.0]
+    p0: [19.0, 19.0, 0.0]
+    p1: [20.0, 20.0, 1.0]
     prescription: P
     type: Injector
     type_region: box

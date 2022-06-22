@@ -33,12 +33,15 @@ class FieldVisualizer():
         # X=np.mgrid[sp[0]:sp[0]+(nb[0]+0.1)*lb[0]:lb[0],
         #               sp[1]:sp[1]+(nb[1]+0.1)*lb[1]:lb[1]]
         X = np.mgrid[sp[0]+0.5*lb[0]:sp[0]+(nb[0]+0.5)*lb[0]:lb[0],
-                      sp[1]+0.5*lb[1]:sp[1]+(nb[1]+0.5)*lb[1]:lb[1],
-                      sp[2]+0.5*lb[2]:sp[2]+(nb[2]+0.5)*lb[2]:lb[2]]
+                      sp[1]+0.5*lb[1]:sp[1]+(nb[1]+0.5)*lb[1]:lb[1]]
+                      # sp[2]+0.5*lb[2]:sp[2]+(nb[2]+0.5)*lb[2]:lb[2]]
         # import pdb; pdb.set_trace()
         v=values.reshape(nb[0],nb[1])
-        plt.pcolormesh(X[0],X[1],values,cmap='jet')
+
+        # import pdb; pdb.set_trace()
+        plt.pcolormesh(X[0],X[1],v,cmap='jet')
         ax=plt.gca()
+        
         ax.set_aspect(1)
         plt.show()
 
