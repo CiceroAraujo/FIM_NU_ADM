@@ -41,7 +41,7 @@ class FieldVisualizer():
         # import pdb; pdb.set_trace()
         plt.pcolormesh(X[0],X[1],v,cmap='jet')
         ax=plt.gca()
-        
+
         ax.set_aspect(1)
         plt.show()
 

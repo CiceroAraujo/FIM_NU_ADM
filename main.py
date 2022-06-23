@@ -46,7 +46,7 @@ multilevel.update_NU_ADM_operators()
 # import pdb; pdb.set_trace()
 # visualize.plot_field(volumes['GID_0'])
 count=0
-plots=np.arange(0,1000,10)
+plots=np.arange(0,1000,40)
 
 # while True:
 tadm=[]
@@ -64,9 +64,20 @@ while not converged:
         tadm.append(t1-t0)
         tfs.append(time.time()-t1)
         if count in plots:
+            # import pdb; pdb.set_trace()
+            # visualize.plot_labels(multilevel.GID_0)
+            # visualize.plot_labels(multilevel.NU_ADM_ID)
+            # import pdb; pdb.set_trace()
+            visualize.plot_labels(multilevel.alphas)
+            visualize.plot_labels(multilevel.betas)
             visualize.plot_field_plt(p1)
-            visualize.plot_field_plt(s1)
+            # visualize.plot_field_plt(multilevel.DUAL_1)
             visualize.plot_field_plt(multilevel.levels)
+            # visualize.plot_field_plt(np.log10(volumes['Kxx']))
+
+            # visualize.plot_field_plt(s1)
+
+
         if fs_iters<5:
             print('increasing time_step from: {}, to: {}'.format(time_step, 1.5*time_step))
             time_step*=1.3

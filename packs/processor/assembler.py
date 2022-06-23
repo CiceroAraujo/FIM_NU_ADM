@@ -15,9 +15,17 @@ class Assembler:
         # Ts, adjs, swns, swn1s, time_step, wells, F_Jacobian
         Ts=self.Ts
         Adjs=self.adjs
+
+
         ID_vol=self.GID_0
         n=len(ID_vol)
         count=0
+        #####only for alpha###
+        la=np.concatenate([Adjs[:,0],Adjs[:,1],Adjs[:,0],Adjs[:,1]])
+        ca=np.concatenate([Adjs[:,1],Adjs[:,0],Adjs[:,0],Adjs[:,1]])
+        da=np.concatenate([Ts,Ts,-Ts,-Ts])
+        self.Ta=sp.csc_matrix((da,(la,ca)),shape=(n,n))
+        #####
         # Swns=self.swns
         # Swn1s=self.swn1s
         Swns[Swns<0]=0

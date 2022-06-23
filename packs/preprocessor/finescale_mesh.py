@@ -57,8 +57,8 @@ def get_permeability_and_porosity(centroids, rock, mgp):
         nx , ny, nz = mgp['n_blocks']
 
         ijk0 = np.array([centroids[:, 0]//block_dim[0], centroids[:, 1]//block_dim[1], centroids[:, 2]//block_dim[2]])
-        ee = ijk0[0] + ijk0[1]*nx + ijk0[2]*nx*ny
-
+        ee = ijk0[0] + ijk0[1]*60 + ijk0[2]*60*220 #60 3600
+        # import pdb; pdb.set_trace()
         ee = ee.astype(np.int32)
         # import pdb; pdb.set_trace()
         permeabilities=ks[ee]
@@ -66,7 +66,7 @@ def get_permeability_and_porosity(centroids, rock, mgp):
 
     if rock['constant_porosity']:
         porosities=np.repeat(rock['porosity_value'],len(centroids))
-    if rock['constant_permeability']:        
+    if rock['constant_permeability']:
         permeabilities=np.tile(rock['permeability_value'],len(centroids)).reshape(centroids.shape)
     return permeabilities, porosities
 

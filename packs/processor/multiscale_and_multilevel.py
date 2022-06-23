@@ -51,26 +51,37 @@ class NewtonIterationMultilevel:
         self.get_finescale_vols()
         t0=time.time()
         self.update_NU_ADM_mesh()
+        self.update_averager()
         self.proc_temp.append(time.time()-t0) # time3
         t0=time.time()
         self.update_NU_ADM_operators()
         self.proc_temp.append(time.time()-t0) # time4
         self.update_R_and_P()
+
+        rar=self.P.toarray()
+        # visualize.plot_labels(self.NU_ADM_ID)
+        # visualize.plot_labels(self.GID_0)
+        # visualize.plot_labels(rar[:,5][:-36])
         return self.R, self.P
 
     def get_finescale_vols(self):
+        flag=-np.ones_like(self.GID_1)
         swns=self.swns
         ws_p=self.wells['ws_prod']
         ws_i=self.wells['ws_inj']
         adjs=self.adjs
         deltas=abs(swns[adjs][:,0]-swns[adjs][:,1])
-        fs=np.arange(len(deltas))[deltas>0.1]
-
+        fs=np.arange(len(deltas))[deltas>0.01]
         # import pdb; pdb.set_trace()
         vols=adjs[fs].flatten()
         vols=vols[swns[vols]<0.3]
+
+        flag[vols]=1
+        viz=np.unique(adjs[flag[adjs].sum(axis=1)==0])
+        vols=np.unique(np.concatenate([vols,viz]))
+        # import pdb; pdb.set_trace()
         t0=time.time()
-        self.update_alpha_stabls()
+        self.update_alpha()
         self.proc_temp.append((time.time()-t0)/10)#time1
         alpha_vols=self.GID_0[self.alphas>self.alpha_lim]
         # import pdb; pdb.set_trace()
@@ -80,23 +91,26 @@ class NewtonIterationMultilevel:
 
         if len(binds)>0:
             bvols=np.concatenate(self.beta_groups[binds])
-
             fs_vs=np.unique(np.concatenate([fs_vs,bvols]))
+        # # import pdb; pdb.set_trace()
+        # vs_uni=self.GID_0[self.GID_1==self.GID_1[ws_i]]
+        # viz=np.concatenate(self.adjs[(self.GID_1[adjs]==self.GID_1[ws_i]).sum(axis=1)==1])
+        # vs_uni=np.concatenate([vs_uni,viz])
         # import pdb; pdb.set_trace()
-        vs_uni=self.GID_0[self.GID_1==self.GID_1[ws_i]]
-        viz=np.concatenate(self.adjs[(self.GID_1[adjs]==self.GID_1[ws_i]).sum(axis=1)==1])
-        vs_uni=np.concatenate([vs_uni,viz])
         # import pdb; pdb.set_trace()
+        # fs_vs=np.setdiff1d(fs_vs,vs_uni)
         # import pdb; pdb.set_trace()
-        fs_vs=np.setdiff1d(fs_vs,vs_uni)
-        # import pdb; pdb.set_trace()
-        # fs_vs=np.concatenate([fs_vs,vs_uni])
-        self.fs_vols=fs_vs
+        # fs_vs=np.concatenate([fs_vs,[4,11]])
+        # fs_vs=np.setdiff1d(fs_vs,self.GID_0[self.DUAL_1==3])
+        # fs_vs=np.concatenate([fs_vs])
+
+        self.fs_vols=fs_vs.copy()
         # self.fs_vols=self.GID_0
     # @profile
     def update_alpha_stabls(self):
         np.set_printoptions(5)
         nf=int(len(self.q)/2)
+        # import pdb; pdb.set_trace()
         Jpp=self.J[0:nf,0:nf]
 
         JP=Jpp*self.OP_matrix
@@ -127,14 +141,24 @@ class NewtonIterationMultilevel:
         np.set_printoptions(5)
         nf=int(self.OP_matrix.shape[0]/2)
 
-        JP=self.Assembler.Jpp*self.OP_to_alpha
+        JP=self.Assembler.Ta*self.OP_to_alpha
         RJP=self.OR_matrix*JP
+
+        l, c, d=sp.find(JP)
+        same=c==self.GID_1[l]
         diag=RJP.diagonal()[self.GID_1]
-        self.alphas=JP.max(axis=1).toarray().T[0]/abs(diag)
+        lines=l[~same]
+        maxs=np.zeros(l.max()+1)
+        # import pdb; pdb.set_trace()
+        np.maximum.at(maxs,lines,d[~same])
+        # import pdb; pdb.set_trace()
+        self.alphas=maxs/abs(diag)
+
 
     def get_beta_groups(self):
         pos=self.GID_1[self.OP[0]]==self.OP[1]
         phis=self.OP[2][pos][np.argsort(self.OP[0][pos])]
+        # import pdb; pdb.set_trace()
         self.betas=(1-phis)/phis
         beta_facs=self.betas[self.adjs].max(axis=1)
         ads=self.adjs[beta_facs>self.beta_lim]
@@ -157,6 +181,7 @@ class NewtonIterationMultilevel:
         glines=[]
         gcols=[]
         gdata=[]
+        prob=0
         if len(self.local_problems_structure[-1][0][0])==0:
             self.local_problems_structure=self.local_problems_structure[:-1]
         for structure in self.local_problems_structure:
@@ -170,7 +195,12 @@ class NewtonIterationMultilevel:
                 internal_gids = local_problem[0][4]
                 new_data = np.concatenate([ts[off_diagonal_entries], -ts[diagonal_entries]])
                 sums=np.bincount(acumulator,weights=new_data)
+                internal_matrix=internal_matrix.tocsc()
+                # internal_matrix.data=np.arange(len(internal_matrix.data))
+                if prob==1:
+                    import pdb; pdb.set_trace()
                 internal_matrix.data=sums[sums!=0]
+
                 for local_external_problem in local_problem[1]:
                     external_matrix = local_external_problem[0]
                     entries = local_external_problem[1]
@@ -191,7 +221,10 @@ class NewtonIterationMultilevel:
                         external_matrix.data = ts[entries]
                         entity_up_ids=external_gids
                 op=-sp.linalg.spsolve(internal_matrix, external_matrix)
+                if ((op.sum(axis=1)<0.999) | (op.sum(axis=1)>1.001)).sum()!=0:
+                    prob=1
 
+                # import pdb; pdb.set_trace()
                 fop=sp.find(op)
                 glines.append(internal_gids[fop[0]])
                 gcols.append(columns[fop[1]])
@@ -211,15 +244,15 @@ class NewtonIterationMultilevel:
         mapg[np.unique(gcols)]=np.arange(len(np.unique(gcols)))
         gcols=mapg[gcols]
         gdata=np.concatenate(gdata)
-        op=[glines, gcols, gdata]
+        op1=[glines, gcols, gdata]
         OP_AMS=sp.csc_matrix((gdata, (glines, gcols)),shape=(int(glines.max()+1), int(gcols.max())+1))
-        return op, OP_AMS
+        return op1, OP_AMS
 
-    def update_NU_ADM_mesh(self):
+    def update_averager(self):
         # self.fs_vols=fs_vols
-        self.levels=np.ones_like(self.GID_1)
-        self.NU_ADM_ID = -self.levels
-        self.levels[self.fs_vols]=0
+        levels=np.ones_like(self.GID_1)
+        NU_ADM_ID = -self.levels
+        levels[self.fs_vols]=0
         gid1_adjs=self.GID_1[self.adjs]
         same_gid=gid1_adjs[:,0]==gid1_adjs[:,1]
         cc_adjs=self.levels[self.adjs].sum(axis=1)==2
@@ -231,11 +264,21 @@ class NewtonIterationMultilevel:
         n=len(self.levels)
         graph = sp.csc_matrix((data, (adjs[:,0], adjs[:,1])),shape=(n,n))
         n,labels=sp.csgraph.connected_components(graph)
+        '''
         self.NU_ADM_ID=labels
         gid1=self.GID_1[self.GID_0[self.DUAL_1==3]]
         self.coarse_id_NU_ADM=gid1
+        '''
+        cols=self.GID_0
+        lines=labels
+        data=np.ones_like(cols)
+        # averager=sp.csc_matrix(())
+        # import pdb; pdb.set_trace()
+        self.averager=sp.csc_matrix((data, (lines, cols)), shape=(lines.max()+1, cols.max()+1))
+        # import pdb; pdb.set_trace()
 
-    def update_NU_ADM_mesh_dep(self):
+
+    def update_NU_ADM_mesh(self):
         # self.fs_vols=fs_vols
         self.levels=np.ones_like(self.GID_1)
         self.NU_ADM_ID = -self.levels
@@ -248,6 +291,7 @@ class NewtonIterationMultilevel:
         remaining_ids=np.setdiff1d(np.unique(self.GID_1), all_cvs)
         nids=len(self.fs_vols)-len(remaining_ids)
         ids=np.concatenate([remaining_ids, self.GID_1.max()+np.arange(nids)+1])
+        # import pdb; pdb.set_trace()
         self.NU_ADM_ID[self.fs_vols]=ids
 
         self.vertices=self.GID_0[self.DUAL_1==3]
@@ -256,12 +300,15 @@ class NewtonIterationMultilevel:
             if rgid in gid1:
                 gid1[gid1==rgid]=self.NU_ADM_ID[self.vertices[self.GID_1[self.vertices]==rgid]]
         self.coarse_id_NU_ADM=gid1
+        # import pdb; pdb.set_trace()
 
 
     def update_NU_ADM_operators(self):
         l, c, d=self.OP
         coarse=self.levels[l]==1
-        mapc = self.NU_ADM_ID[self.DUAL_1==3]
+        # import pdb; pdb.set_trace()
+        # mapc = self.NU_ADM_ID[self.DUAL_1==3] #aqui trocar por linha abaixo
+        mapc = self.coarse_id_NU_ADM
         lines = l[coarse]
         cols = mapc[c[coarse]]
         # import pdb; pdb.set_trace()
@@ -300,7 +347,6 @@ class NewtonIterationMultilevel:
         lR=np.concatenate([lr, lr+n_ADM])
         cR=np.concatenate([cr, cr+n_f])
         dR=np.concatenate([dr, dr])
-
         self.R=sp.csc_matrix((dR, (lR, cR)), shape=(2*n_ADM, 2*n_f))
         self.P=sp.csc_matrix((dP, (lP, cP)), shape=(2*n_f, 2*n_ADM))
     # @profile
@@ -346,8 +392,10 @@ class NewtonIterationMultilevel:
                 return False, count, pressure, swns
         # saturation[wells['ws_prod']]=saturation[wells['viz_prod']].sum()/len(wells['viz_prod'])
         na, nf=int(self.R.shape[0]/2), int(self.R.shape[1]/2)
-        OR_ADM=self.R[na:,nf:]
-        swns=OR_ADM.T*(OR_ADM*swns/np.array(OR_ADM.sum(axis=1)).T[0])
-        # import pdb; pdb.set_trace()
+        # OR_ADM=self.R[na:,nf:]
+        OR_ADM=self.averager
+
+        swns=OR_ADM.T*(OR_ADM.tocsr()*swns/np.array(OR_ADM.sum(axis=1)).T[0])
+
         # swns=(Rs.T*(Rs*swns))#/Rs.sum(axis=0)
         return True, count, pressure, swns
