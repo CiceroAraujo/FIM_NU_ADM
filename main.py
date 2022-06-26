@@ -46,7 +46,7 @@ multilevel.update_NU_ADM_operators()
 # import pdb; pdb.set_trace()
 # visualize.plot_field(volumes['GID_0'])
 count=0
-plots=np.arange(0,1000,40)
+plots=np.arange(0,1000,50)
 
 # while True:
 tadm=[]
@@ -73,8 +73,9 @@ while not converged:
             visualize.plot_field(p1)
             visualize.plot_field(s1)
             # visualize.plot_field_plt(multilevel.DUAL_1)
-            # visualize.plot_field_plt(multilevel.levels)
-            # visualize.plot_field_plt(np.log10(volumes['Kxx']))
+            visualize.plot_field(np.log10(volumes['Kxx']))
+            visualize.plot_field(multilevel.levels)
+
 
             # visualize.plot_field_plt(s1)
 

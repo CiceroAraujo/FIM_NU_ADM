@@ -295,7 +295,7 @@ class NewtonIterationMultilevel:
         dp=fp[2]
         op1=[lp, cp, dp]
         OP_AMS=sp.csc_matrix((dp, (lp, cp)),shape=(int(lp.max()+1), int(cp.max())+1))
-        
+
         return op1, OP_AMS
 
         # import pdb; pdb.set_trace()
