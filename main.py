@@ -65,14 +65,15 @@ while not converged:
         tfs.append(time.time()-t1)
         if count in plots:
             # import pdb; pdb.set_trace()
-            # visualize.plot_labels(multilevel.GID_0)
+
             # visualize.plot_labels(multilevel.NU_ADM_ID)
             # import pdb; pdb.set_trace()
-            visualize.plot_labels(multilevel.alphas)
-            visualize.plot_labels(multilevel.betas)
-            visualize.plot_field_plt(p1)
+            # visualize.plot_field_plt(multilevel.alphas)
+            # visualize.plot_labels(multilevel.betas)
+            visualize.plot_field(p1)
+            visualize.plot_field(s1)
             # visualize.plot_field_plt(multilevel.DUAL_1)
-            visualize.plot_field_plt(multilevel.levels)
+            # visualize.plot_field_plt(multilevel.levels)
             # visualize.plot_field_plt(np.log10(volumes['Kxx']))
 
             # visualize.plot_field_plt(s1)

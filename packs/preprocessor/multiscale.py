@@ -3,21 +3,21 @@ from scipy.sparse import csc_matrix, csgraph, find
 import scipy.sparse as sp
 from .. import inputs
 
-def get_local_problems_structure(DUAL_1, GID_1, adjacencies):
+def get_local_problems_structure(DUAL_1, GID_1, adjacencies, ts):
     ds_edges, local_ID_edges, entity_ID_edges = get_dual_structure(DUAL_1, adjacencies, 2)
-    edge_local_problems, edge2face_connections = get_prolongation_operator_local_problems(adjacencies, ds_edges, DUAL_1, local_ID_edges, entity_ID_edges, [])
+    edge_local_problems, edge2face_connections = get_prolongation_operator_local_problems(adjacencies, ds_edges, DUAL_1, local_ID_edges, entity_ID_edges, [], ts)
 
     ds_faces, local_ID_faces, entity_ID_faces = get_dual_structure(DUAL_1, adjacencies, 1)
-    face_local_problems, face2internal_connections = get_prolongation_operator_local_problems(adjacencies, ds_faces, DUAL_1, local_ID_faces, entity_ID_edges, edge2face_connections)
+    face_local_problems, face2internal_connections = get_prolongation_operator_local_problems(adjacencies, ds_faces, DUAL_1, local_ID_faces, entity_ID_edges, edge2face_connections, ts)
 
     ds_internal, local_ID_internal, entity_ID_internal = get_dual_structure(DUAL_1, adjacencies, 0)
-    internal_local_problems, _ = get_prolongation_operator_local_problems(adjacencies, ds_internal, DUAL_1, local_ID_internal, entity_ID_faces, face2internal_connections)
+    internal_local_problems, _ = get_prolongation_operator_local_problems(adjacencies, ds_internal, DUAL_1, local_ID_internal, entity_ID_faces, face2internal_connections, ts)
     # entity_ID=np.vstack([entity_ID_edges, entity_ID_faces, entity_ID_internal]).max(axis=0)
     local_ID=np.vstack([local_ID_edges, local_ID_faces, local_ID_internal]).max(axis=0)
     return [edge_local_problems, face_local_problems, internal_local_problems], local_ID
 
 # @profile
-def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, local_ID, entity_ID_up, external_connections_in):
+def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, local_ID, entity_ID_up, external_connections_in, ts):
     local_problems=[]
     print(len(entities[0]))
     external_connections_out = []
@@ -28,6 +28,7 @@ def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, loca
         adjs = adjacencies[local_faces]
         lines=[adjs[:,0], adjs[:,1], adjs[:,0], adjs[:,1]]
         cols=[adjs[:,1], adjs[:,0], adjs[:,0], adjs[:,1]]
+        data=[ts[local_faces],ts[local_faces],-ts[local_faces],-ts[local_faces]]
         internal_off_diag_entries = np.concatenate([local_faces, local_faces])
         internal_diag_entries = [local_faces, local_faces]
         external_matrices=[]
@@ -49,15 +50,14 @@ def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, loca
                 d=external_faces.copy()
                 external_matrix=csc_matrix((d, (l, c)), shape = (l.max()+1, c.max()+1), dtype=np.float32)
                 if len(external_connections_in)>0:
-
                     aa=np.hstack([external_connections_in[e] for e in entity_up_ids])
                     map_l[np.unique(aa[0,:])]=np.arange(len(np.unique(aa[0,:])))#[np.argsort(entity_ID_up[external_gids])]
                     ls=map_l[aa[0,:]]
                     map_v[np.unique(aa[1,:])]=np.arange(len(np.unique(aa[1,:])))#[np.argsort(internal_gids)]
-                    # import pdb; pdb.set_trace()
+
                     cs=map_v[aa[1,:]]
                     # import pdb; pdb.set_trace()
-                    # asort=np.lexsort((aa[0,:],aa[1,:]))
+                    # asort=np.lexsort((aa[1,:],aa[0,:]))
                     # ls=ls[asort]
                     # cs=cs[asort]
                     '''
@@ -68,7 +68,6 @@ def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, loca
                     # map_l[np.unique(aa[0,:])]=range(len(np.unique(aa[0,:])))
                     g_lines=np.tile(np.unique(adjs),len(np.unique(aa[1,:])))
                     g_cols=np.repeat(np.unique(aa[1,:]),len(np.unique(adjs)))
-
                     matrix_connection=csc_matrix((np.arange(len(ls))+1,(ls, cs)), shape=(ls.max()+1,cs.max()+1))
 
 
@@ -82,14 +81,18 @@ def get_prolongation_operator_local_problems(adjacencies, entities, DUAL_1, loca
                 #_____Internal influences____
                 lines.append(internal_gids)
                 cols.append(internal_gids)
+                data.append(-ts[external_faces])
                 internal_diag_entries.append(external_faces)
                 #________________________
         lines=local_ID[np.concatenate(lines)]
         cols=local_ID[np.concatenate(cols)]
+        data=np.concatenate(data)
         internal_diag_entries=np.concatenate(internal_diag_entries)
+        # import pdb; pdb.set_trace()
         if len(lines)>0:
             acumulator = lines*(cols.max()+1)+cols
-            internal_matrix=csc_matrix((np.ones_like(lines), (lines, cols)), shape = (lines.max()+1, cols.max()+1), dtype=np.float32)
+            internal_matrix=csc_matrix((np.ones_like(data), (lines, cols)), shape = (lines.max()+1, cols.max()+1), dtype=np.float32)
+            # import pdb; pdb.set_trace()
             internal_gids = np.unique(adjs)
             i_matrix_structure = [internal_matrix, internal_off_diag_entries, internal_diag_entries, acumulator, internal_gids]
         else:

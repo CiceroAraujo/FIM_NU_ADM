@@ -19,7 +19,7 @@ class NewtonIterationMultilevel:
         self.GID_1, self.DUAL_1 = get_dual_and_primal_1(volumes['centroids'])
         self.prep_time.append(time.time()-t0)#prep1
         t0=time.time()
-        self.local_problems_structure, self.local_ID = get_local_problems_structure(self.DUAL_1, self.GID_1, faces['adjacent_volumes'])
+        self.local_problems_structure, self.local_ID = get_local_problems_structure(self.DUAL_1, self.GID_1, faces['adjacent_volumes'],faces['permeabilities'])
         self.OP, self.OP_matrix = self.get_prolongation_operator(faces['permeabilities'])
         self.prep_time.append(time.time()-t0)#prep2
         self.OR_matrix = sp.csc_matrix((np.ones_like(self.GID_0), (self.GID_1, self.GID_0)), shape=(int(self.GID_1.max()+1),int(self.GID_0.max()+1)))
@@ -175,7 +175,7 @@ class NewtonIterationMultilevel:
         self.beta_groups=np.array([uads[labels==l] for l in range(n_l)])
 
     # @profile
-    def get_prolongation_operator(self, ts):
+    def get_prolongation_operator_fast(self, ts):
         i=-1
         ops = []
         glines=[]
@@ -197,9 +197,12 @@ class NewtonIterationMultilevel:
                 sums=np.bincount(acumulator,weights=new_data)
                 internal_matrix=internal_matrix.tocsc()
                 # internal_matrix.data=np.arange(len(internal_matrix.data))
-                if prob==1:
-                    import pdb; pdb.set_trace()
+                # if prob==1:
+                # print(internal_matrix.toarray())
                 internal_matrix.data=sums[sums!=0]
+                # print(internal_matrix.toarray())
+                # import pdb; pdb.set_trace()
+
 
                 for local_external_problem in local_problem[1]:
                     external_matrix = local_external_problem[0]
@@ -221,8 +224,9 @@ class NewtonIterationMultilevel:
                         external_matrix.data = ts[entries]
                         entity_up_ids=external_gids
                 op=-sp.linalg.spsolve(internal_matrix, external_matrix)
-                if ((op.sum(axis=1)<0.999) | (op.sum(axis=1)>1.001)).sum()!=0:
-                    prob=1
+                # if ((op.sum(axis=1)<0.999) | (op.sum(axis=1)>1.001)).sum()!=0:
+                #     # import pdb; pdb.set_trace()
+                #     prob=1
 
                 # import pdb; pdb.set_trace()
                 fop=sp.find(op)
@@ -247,6 +251,55 @@ class NewtonIterationMultilevel:
         op1=[glines, gcols, gdata]
         OP_AMS=sp.csc_matrix((gdata, (glines, gcols)),shape=(int(glines.max()+1), int(gcols.max())+1))
         return op1, OP_AMS
+
+    def get_prolongation_operator(self,ts):
+        # _,_1=self.get_prolongation_operator_fast(ts )
+        # import pdb; pdb.set_trace()
+        dual_1=self.DUAL_1
+        n=len(dual_1)
+        nv=(dual_1==3).sum()
+        ne=(dual_1==2).sum()
+        nf=(dual_1==1).sum()
+        wire=-np.ones_like(dual_1)
+        wire[dual_1==1]=range(nf)
+        wire[dual_1==2]=nf+range(ne)
+        # import pdb; pdb.set_trace()
+        wire[dual_1==3]=nf+ne+range(nv)
+        # G = sp.csc_matrix((np.ones_like(dual_1), (wire, self.GID_0)),shape=(n,n))
+        a=wire[self.adjs.T]
+
+        lines=np.concatenate([a[0],a[1],a[0],a[1]])
+        cols=np.concatenate([a[1],a[0],a[0],a[1]])
+        data=np.concatenate([ts,ts,-ts,-ts])
+
+        T = sp.csc_matrix((data, (lines, cols)),shape=(n,n))
+        # W=G*T*G.T
+        Tff=T[0:nf,0:nf]
+        Tfe=T[0:nf,nf:ne+nf]
+        Tee=T[nf:ne+nf,nf:ne+nf]
+        Tev=T[nf:ne+nf,ne+nf:n]
+        Tvv=T[ne+nf:n,ne+nf:n]
+        Tvv.data=np.ones(nv)
+        # import pdb; pdb.set_trace()
+        aux=sp.csc_matrix((np.array(Tfe.sum(axis=0))[0], (range(ne), range(ne))),shape=(ne,ne))
+        Tee+=aux
+        ope=sp.linalg.spsolve(Tee,-Tev*Tvv)
+        opf=sp.linalg.spsolve(Tff,-Tfe*ope)
+        prol=sp.vstack([opf,ope,Tvv])
+
+        # import pdb; pdb.set_trace()
+        G=sp.csc_matrix((np.ones(n), (wire.astype(int), self.GID_0)),shape=(n, n))
+        fp=sp.find(G.T*prol)
+        lp=fp[0]
+        cp=fp[1]
+        dp=fp[2]
+        op1=[lp, cp, dp]
+        OP_AMS=sp.csc_matrix((dp, (lp, cp)),shape=(int(lp.max()+1), int(cp.max())+1))
+        
+        return op1, OP_AMS
+
+        # import pdb; pdb.set_trace()
+
 
     def update_averager(self):
         # self.fs_vols=fs_vols

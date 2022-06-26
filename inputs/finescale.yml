@@ -1,5 +1,5 @@
 mesh_generation_parameters:
-  n_blocks: [4, 4, 1]
+  n_blocks: [60, 220, 1]
   block_size: [1, 1, 1]
   starting_point: [0, 0, 0]
 
@@ -22,8 +22,8 @@ wells:
     value: 1.0
 
   P2:
-    p0: [3.0, 3.0, 0.0]
-    p1: [4.0, 4.0, 1.0]
+    p0: [59.0, 219.0, 0.0]
+    p1: [60.0, 220.0, 1.0]
     prescription: P
     type: Producer
     type_region: box
