@@ -46,39 +46,80 @@ multilevel.update_NU_ADM_operators()
 # import pdb; pdb.set_trace()
 # visualize.plot_field(volumes['GID_0'])
 count=0
-plots=np.arange(0,1000,50)
-
+# plots=np.arange(0,10000,50)
+vpi_max=0.7
+pvis=np.arange(0,vpi_max+.00001,0.05)
+ind_pvi=0
 # while True:
 tadm=[]
 tfs=[]
 converged=False
 time_steps=[]
+simulation='finescale'
+# resolution='homogeneous'
+case='label_1'
+np.save('results/'+case+'/porosities.npy',volumes['pore_volume'])
+
+ws_prod=wells['ws_prod']
+ads=faces['adjacent_volumes']
+viz=np.setdiff1d(np.unique(ads[(ads==ws_prod).sum(axis=1)==1]),ws_prod)
+np.save('results/'+case+'/viz.npy',viz)
+# import pdb; pdb.set_trace()
+# vpis_for_npy=np.arange(0,0.70001,0.001)
+saturations=[]
+pressures=[]
+n1_adm=[]
+ind_npy=0
 while not converged:
     conv=False
     while not conv:
         t0=time.time()
-        conv, fs_iters, p1, s1=multilevel.newton_iteration_ADM(p, s , time_step)
+        if simulation=='multilevel':
+            conv, fs_iters, p1, s1=multilevel.newton_iteration_ADM(p, s , time_step)
+            act_pvi=multilevel.PVI
         time_steps.append(time_step)
         t1=time.time()
-        # conv, fs_iters, p1, s1=finescale.newton_iteration_finescale(p, s , time_step)
+        if simulation=='finescale':
+            conv, fs_iters, p1, s1=finescale.newton_iteration_finescale(p, s , time_step)
+            act_pvi=finescale.PVI
+            if conv:
+                saturations.append(s1)
+                pressures.append(p1)
+            if (finescale.PVI>vpi_max) and conv:
+                saturations=np.array(saturations)
+                pressures=np.array(pressures)
+                np.save('results/'+case+'/pressures_'+simulation+'.npy',pressures)
+                np.save('results/'+case+'/saturations_'+simulation+'.npy',saturations)
+                converged=True
+        if simulation=='multilevel':
+            conv, fs_iters, p1, s1=multilevel.newton_iteration_ADM(p1, s1 , time_step)
+            act_pvi=multilevel.PVI
+            if conv:
+                saturations.append(s1)
+                pressures.append(p1)
+                n1_adm.append(multilevel.NU_ADM_ID.max())
+            if (multilevel.PVI>vpi_max) and conv:
+                saturations=np.array(saturations)
+                pressures=np.array(pressures)
+                n1_adm=np.array(n1_adm)
+                np.save('results/'+case+'/pressures_'+simulation+'.npy',pressures)
+                np.save('results/'+case+'/saturations_'+simulation+'.npy',saturations)
+                np.save('results/'+case+'/n1_adm_'+simulation+'.npy',n1_adm)
+                converged=True
         tadm.append(t1-t0)
         tfs.append(time.time()-t1)
-        if count in plots:
-            # import pdb; pdb.set_trace()
 
-            # visualize.plot_labels(multilevel.NU_ADM_ID)
-            # import pdb; pdb.set_trace()
-            # visualize.plot_field_plt(multilevel.alphas)
-            # visualize.plot_labels(multilevel.betas)
-            visualize.plot_field(p1)
-            visualize.plot_field(s1)
+        if act_pvi > pvis[ind_pvi]:
+            ind_pvi+=1
+            visualize.plot_field(p1,'Pressure')
+            visualize.plot_field(s1,'Saturation')
             # visualize.plot_field_plt(multilevel.DUAL_1)
-            visualize.plot_field(np.log10(volumes['Kxx']))
-            visualize.plot_field(multilevel.levels)
-
-
-            # visualize.plot_field_plt(s1)
-
+            if simulation=='multilevel':
+                visualize.plot_field(multilevel.alphas,'Alpha')
+                visualize.plot_field(multilevel.betas,'Beta')
+                visualize.plot_field(np.log10(volumes['Kxx']),'Kxx=Kyy')
+                visualize.plot_field(multilevel.levels,'Levels')
+            visualize.grid.save('results/'+case+'/arqs/'+simulation+'_'+str(int(100*pvis[ind_pvi-1]))+'.vtk')
 
         if fs_iters<5:
             print('increasing time_step from: {}, to: {}'.format(time_step, 1.5*time_step))
@@ -86,16 +127,6 @@ while not converged:
         elif fs_iters>15:
             print('reducing time_step from: {}, to: {}'.format(time_step, 0.8*time_step))
             time_step*=0.8
-
-        # try:
-        #     if multilevel.PVI>0.15:
-        #         converged=True
-        #     print(multilevel.PVI,"PVI")
-        # except:
-        #     if finescale.PVI>0.15:
-        #         converged=True
-        #     print(finescale.PVI,"PVI")
-
 
     p=p1.copy()
     s=s1.copy()

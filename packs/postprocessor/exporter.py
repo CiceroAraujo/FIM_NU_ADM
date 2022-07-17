@@ -14,16 +14,18 @@ class FieldVisualizer():
         self.grid['scalars'] = values.ravel(order='f')
 
         plotter = pv.Plotter()
-        plotter.add_mesh(self.grid, show_edges=False, color="tan")
+        plotter.add_mesh(self.grid, show_edges=True, color="tan")
         points = self.grid.points
         mask = points[:, 0] == 0
         plotter.add_point_labels(points, values.round(3).tolist(), point_size=20, font_size=15)
         plotter.show()
 
 
-    def plot_field(self, values):
-        self.grid.point_arrays["values"] = values#.flatten().astype(np.float64)  # Flatten the array!
-        self.grid.plot(show_edges=True,cmap='jet')
+    def plot_field(self, values,tag):
+        # self.grid.point_arrays[tag] = values#.flatten().astype(np.float64)  # Flatten the array!
+        self.grid.cell_arrays[tag] = values
+        # import pdb; pdb.set_trace()
+        # self.grid.plot(show_edges=True,cmap='jet')
 
     def plot_field_plt(self, values):
         print('printing')
@@ -48,7 +50,7 @@ class FieldVisualizer():
 
     def get_grid(self):
         mesh = inputs['mesh_generation_parameters']
-        nb=np.array(mesh['n_blocks'])[[1,0,2]]
+        nb=np.array(mesh['n_blocks'])[[1,0,2]]+1
         lb=np.array(mesh['block_size'])#[[1,0,2]]
         sp=np.array([0,0,0])
 
