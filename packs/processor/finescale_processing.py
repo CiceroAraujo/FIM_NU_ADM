@@ -14,7 +14,7 @@ class NewtonIterationFinescale():
         self.wells=wells
 
     # @profile
-    def newton_iteration_finescale(self, p, s, time_step, rel_tol=1e-3):
+    def newton_iteration_finescale(self, p, s, time_step, rel_tol=1e-5):
         pressure = p.copy()
         swns = s.copy()
         swn1s = s.copy()
@@ -22,23 +22,33 @@ class NewtonIterationFinescale():
         count=0
         dt=time_step
         while not converged:
-            swns[self.Assembler.wells['ws_inj']]=1
+            # swns[self.Assembler.wells['ws_inj']]=1
+            self.Assembler.iteration=count
             J, q=self.Assembler.get_jacobian_matrix(swns, swn1s, pressure, time_step)
             t0=time.time()
             sol=-linalg.spsolve(J, q)
             self.time_solve.append(time.time()-t0)
             n=int(len(q)/2)
+            # sol[self.wells['ws_p']]=0
             pressure+=sol[0:n]
-            sol[n+self.wells['ws_prod']]=0
+            # sol[n+self.wells['ws_inj']]=0
+            # sol[np.array([13421,13422])]=0
             swns+=sol[n:]
 
+            # if count>8:
+            #     print(np.where(abs(sol)>0.0000001))
+            #     import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             # swns[self.wells['ws_prod']]=0
             # visualize.plot_field(pressure)
-            swns[self.Assembler.wells['ws_inj']]=1
-            converged=max(abs(sol[n:]))<rel_tol
-            print(max(abs(sol)),max(abs(sol)),'fs')
+            # swns[self.Assembler.wells['ws_inj']]=1
+            converged=max(abs(sol))<rel_tol
+            print(max(abs(sol[n:])),max(abs(sol[n:])),'fs')
+            # import pdb; pdb.set_trace()
             self.PVI=(swns*self.porosities).sum()/self.porosities.sum()
             count+=1
+            # swns[swns<0]=0
+            # swn1s[swn1s>1]=1
             if count>20:
                 print('excedded maximum number of iterations finescale')
                 return False, count, pressure, swns

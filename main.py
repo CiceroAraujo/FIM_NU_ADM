@@ -48,7 +48,7 @@ multilevel.update_NU_ADM_operators()
 count=0
 # plots=np.arange(0,10000,50)
 vpi_max=0.7
-pvis=np.arange(0,vpi_max+.00001,0.05)
+pvis=np.arange(0,vpi_max+.00001,0.0005)
 ind_pvi=0
 # while True:
 tadm=[]
@@ -70,6 +70,9 @@ saturations=[]
 pressures=[]
 n1_adm=[]
 ind_npy=0
+# import pdb; pdb.set_trace()
+s[(volumes['centroids'][:,0]>33)&(volumes['centroids'][:,0]<35)]=1
+s[(volumes['centroids'][:,0]<5)]=1
 while not converged:
     conv=False
     while not conv:
@@ -108,6 +111,7 @@ while not converged:
                 converged=True
         tadm.append(t1-t0)
         tfs.append(time.time()-t1)
+        visualize.grid.save('results/'+case+'/arqs/'+simulation+'_'+str(count)+'.vtk')
 
         if act_pvi > pvis[ind_pvi]:
             ind_pvi+=1
@@ -119,7 +123,7 @@ while not converged:
                 visualize.plot_field(multilevel.betas,'Beta')
                 visualize.plot_field(np.log10(volumes['Kxx']),'Kxx=Kyy')
                 visualize.plot_field(multilevel.levels,'Levels')
-            visualize.grid.save('results/'+case+'/arqs/'+simulation+'_'+str(int(100*pvis[ind_pvi-1]))+'.vtk')
+            # visualize.grid.save('results/'+case+'/arqs/'+simulation+'_'+str(int(100*pvis[ind_pvi-1]))+'.vtk') #ativar
 
         if fs_iters<5:
             print('increasing time_step from: {}, to: {}'.format(time_step, 1.5*time_step))

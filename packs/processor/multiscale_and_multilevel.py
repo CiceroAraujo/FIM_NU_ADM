@@ -101,8 +101,7 @@ class NewtonIterationMultilevel:
         swns=self.swns
         ws_p=self.wells['ws_prod']
         ws_i=self.wells['ws_inj']
-        adjs=self.adjs
-        import pdb; pdb.set_trace()
+        adjs=self.adjs        
         deltas=abs(swns[adjs][:,0]-swns[adjs][:,1])
         fs=np.arange(len(deltas))[deltas>0.1]
 
