@@ -71,7 +71,7 @@ pressures=[]
 n1_adm=[]
 ind_npy=0
 # import pdb; pdb.set_trace()
-s[(volumes['centroids'][:,0]>33)&(volumes['centroids'][:,0]<35)]=1
+s[(volumes['centroids'][:,0]>30)&(volumes['centroids'][:,0]<37)]=1
 s[(volumes['centroids'][:,0]<5)]=1
 while not converged:
     conv=False
@@ -110,8 +110,7 @@ while not converged:
                 np.save('results/'+case+'/n1_adm_'+simulation+'.npy',n1_adm)
                 converged=True
         tadm.append(t1-t0)
-        tfs.append(time.time()-t1)
-        visualize.grid.save('results/'+case+'/arqs/'+simulation+'_'+str(count)+'.vtk')
+        tfs.append(time.time()-t1)        
 
         if act_pvi > pvis[ind_pvi]:
             ind_pvi+=1
@@ -134,6 +133,7 @@ while not converged:
 
     p=p1.copy()
     s=s1.copy()
+    visualize.grid.save('results/'+case+'/arqs/'+simulation+'_'+str(count)+'.vtk')
     count+=1
 
 # np.save('results/time_steps.npy',np.array(time_steps))

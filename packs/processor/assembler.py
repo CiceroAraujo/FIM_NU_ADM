@@ -73,14 +73,15 @@ class Assembler:
         # pf1=press1
         # import pdb; pdb.set_trace()
 
-        fi_o=(pf1-pf0)+self.F_Jacobian.r_o*self.gh
-        fi_w=(pf1-pf0)+self.F_Jacobian.r_w*self.gh
+        fi_o=(pf1-pf0)-self.F_Jacobian.r_o*self.gh
+        fi_w=(pf1-pf0)-self.F_Jacobian.r_w*self.gh
         z0=self.centroids[self.adjs[:,0]][:,np.array(self.F_Jacobian.g)!=0].T[0]
         z1=self.centroids[self.adjs[:,1]][:,np.array(self.F_Jacobian.g)!=0].T[0]
         dz=-(z1-z0)
         nfi=len(Adjs)
-
-        up0=(dz<0)#|(swns0>swns1)
+        # fi_o[fi_w<0]=-fi_o[fi_w<0]
+        # import pdb; pdb.set_trace()
+        up0=(fi_o<0)#|(swns0>swns1)
         up1=up0==False
         swf=np.zeros(nfi)
         swf[up0]=swns0[up0]
@@ -89,7 +90,7 @@ class Assembler:
         id_up[up0]=ids0[up0]
         id_up[up1]=ids1[up1]
 
-        up0_w=(dz>0)|(swns0>swns1)
+        up0_w=(fi_w<0)#|(swns0>swns1)
         up1_w=up0_w==False
         swf_w=np.zeros(nfi)
         swf_w[up0_w]=swns0[up0_w]
@@ -97,7 +98,7 @@ class Assembler:
         id_up_w=np.zeros(nfi,dtype=np.int32)
         id_up_w[up0_w]=ids0[up0_w]
         id_up_w[up1_w]=ids1[up1_w]
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         gh=-self.gh
         # if self.iteration>0:
         #     gh=np.zeros_like(gh)

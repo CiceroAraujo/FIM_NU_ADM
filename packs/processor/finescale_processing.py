@@ -42,7 +42,7 @@ class NewtonIterationFinescale():
             # swns[self.wells['ws_prod']]=0
             # visualize.plot_field(pressure)
             # swns[self.Assembler.wells['ws_inj']]=1
-            converged=max(abs(sol))<rel_tol
+            converged=max(abs(sol[n:]))<rel_tol
             print(max(abs(sol[n:])),max(abs(sol[n:])),'fs')
             # import pdb; pdb.set_trace()
             self.PVI=(swns*self.porosities).sum()/self.porosities.sum()
