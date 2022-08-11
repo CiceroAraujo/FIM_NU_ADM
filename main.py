@@ -17,7 +17,7 @@ multilevel=NewtonIterationMultilevel(wells, faces, volumes)
 p=np.zeros_like(volumes['GID_0']).astype(np.float64)
 p[wells['ws_p']]=wells['values_p']
 s=p.copy()
-time_step=0.0005
+time_step=0.000005
 wells['count']=0
 '''
 multilevel.get_finescale_vols()
@@ -55,7 +55,7 @@ tadm=[]
 tfs=[]
 converged=False
 time_steps=[]
-simulation='finescale'
+simulation='multilevel'
 # resolution='homogeneous'
 case='label_1'
 np.save('results/'+case+'/porosities.npy',volumes['pore_volume'])
@@ -110,7 +110,7 @@ while not converged:
                 np.save('results/'+case+'/n1_adm_'+simulation+'.npy',n1_adm)
                 converged=True
         tadm.append(t1-t0)
-        tfs.append(time.time()-t1)        
+        tfs.append(time.time()-t1)
 
         if act_pvi > pvis[ind_pvi]:
             ind_pvi+=1
@@ -122,6 +122,7 @@ while not converged:
                 visualize.plot_field(multilevel.betas,'Beta')
                 visualize.plot_field(np.log10(volumes['Kxx']),'Kxx=Kyy')
                 visualize.plot_field(multilevel.levels,'Levels')
+                visualize.plot_field(multilevel.GID_1,'GID_1')
             # visualize.grid.save('results/'+case+'/arqs/'+simulation+'_'+str(int(100*pvis[ind_pvi-1]))+'.vtk') #ativar
 
         if fs_iters<5:

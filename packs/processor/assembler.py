@@ -81,7 +81,7 @@ class Assembler:
         nfi=len(Adjs)
         # fi_o[fi_w<0]=-fi_o[fi_w<0]
         # import pdb; pdb.set_trace()
-        up0=(fi_o<0)#|(swns0>swns1)
+        up0=(fi_o<1e-10)#|(swns0>swns1)
         up1=up0==False
         swf=np.zeros(nfi)
         swf[up0]=swns0[up0]
@@ -90,7 +90,7 @@ class Assembler:
         id_up[up0]=ids0[up0]
         id_up[up1]=ids1[up1]
 
-        up0_w=(fi_w<0)#|(swns0>swns1)
+        up0_w=(fi_w<1e-10)#|(swns0>swns1)
         up1_w=up0_w==False
         swf_w=np.zeros(nfi)
         swf_w[up0_w]=swns0[up0_w]

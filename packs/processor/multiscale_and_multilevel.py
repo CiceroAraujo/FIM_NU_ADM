@@ -72,14 +72,19 @@ class NewtonIterationMultilevel:
         ws_i=self.wells['ws_inj']
         adjs=self.adjs
         deltas=abs(swns[adjs][:,0]-swns[adjs][:,1])
-        fs=np.arange(len(deltas))[deltas>0.1]
+        same=(self.GID_1[adjs[:,0]]==self.GID_1[adjs[:,1]])
+
+        # fs=np.arange(len(deltas))[(deltas>0.05)&(same|(swns.sum(axis=0)<.3))]
+        # fs=np.arange(len(deltas))[(deltas>0.05)&((swns.sum(axis=0)<.3)|(deltas>.1))]
+        fs=np.arange(len(deltas))[deltas>0.05]
         # import pdb; pdb.set_trace()
+        # fs=np.arange(len(deltas))[((deltas>0.05))&((swns.sum(axis=0)>0.2)|same)]
         vols=adjs[fs].flatten()
-        vols=vols[swns[vols]<0.3]
-        for i in range(2):
-            flag[vols]=1
-            viz=np.unique(adjs[flag[adjs].sum(axis=1)==0])
-            vols=np.unique(np.concatenate([vols,viz]))
+        # vols=vols[swns[vols]<0.3]
+        # for i in range(1):
+        #     flag[vols]=1
+        #     viz=np.unique(adjs[flag[adjs].sum(axis=1)==0])
+        #     vols=np.unique(np.concatenate([vols,viz]))
 
         t0=time.time()
         self.update_alpha()
@@ -101,7 +106,7 @@ class NewtonIterationMultilevel:
         swns=self.swns
         ws_p=self.wells['ws_prod']
         ws_i=self.wells['ws_inj']
-        adjs=self.adjs        
+        adjs=self.adjs
         deltas=abs(swns[adjs][:,0]-swns[adjs][:,1])
         fs=np.arange(len(deltas))[deltas>0.1]
 
